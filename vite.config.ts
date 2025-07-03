@@ -21,30 +21,32 @@ export default defineConfig({
     }),
     tsconfigPaths(),
   ].filter(Boolean),
-  test: {
-    globals: true,
-    environment: "jsdom",
-    browser: {
-      enabled: false,
-    },
-    setupFiles: ["./test/setup.ts"],
-    include: ["./app/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
-    exclude: ["./build/**", "./public/**"],
-    watch: false,
-    root: ".",
-    deps: {
-      optimizer: {
-        web: {
-          include: ["@remix-run/node", "@remix-run/react"],
+  ...(process.env.VITEST && {
+    test: {
+      globals: true,
+      environment: "jsdom",
+      browser: {
+        enabled: false,
+      },
+      setupFiles: ["./test/setup.ts"],
+      include: ["./app/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
+      exclude: ["./build/**", "./public/**"],
+      watch: false,
+      root: ".",
+      deps: {
+        optimizer: {
+          web: {
+            include: ["@remix-run/node", "@remix-run/react"],
+          },
         },
       },
+      transformMode: {
+        web: [/\.(js|jsx|ts|tsx)$/],
+      },
+      jsx: 'react',
+      jsxFactory: 'React.createElement',
+      jsxFragmentFactory: 'React.Fragment',
+      jsxRuntime: 'automatic',
     },
-    transformMode: {
-      web: [/\.(js|jsx|ts|tsx)$/],
-    },
-    jsx: 'react',
-    jsxFactory: 'React.createElement',
-    jsxFragmentFactory: 'React.Fragment',
-    jsxRuntime: 'automatic',
-  },
+  }),
 });
