@@ -1,16 +1,38 @@
-# Welcome to Remix!
+# Remix Audio Visualizer
+
+このプロジェクトは、Remix を使用して構築されたオーディオビジュアライザーです。音声入力に基づいて視覚的なエフェクトを生成し、リアルタイムで表示します。
+
+## 主な機能
+
+*   リアルタイムオーディオ解析
+*   カスタマイズ可能な視覚化エフェクト
+*   Remix の高速な開発体験
 
 - 📖 [Remix docs](https://remix.run/docs)
 
 ## Development
 
-Run the dev server:
+開発サーバーを起動します。
 
 ```sh
 npm run dev
 ```
 
-## Deployment
+### テストの実行
+
+Vitest を使用してテストを実行します。
+
+```sh
+npm test
+```
+
+### 環境変数の設定
+
+プロジェクトのルートディレクトリに `.env` ファイルを作成し、環境変数を設定します。`.env.example` を参考にしてください。
+
+```
+cp .env.example .env
+```
 
 First, build your app for production:
 

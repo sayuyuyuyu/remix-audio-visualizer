@@ -10,7 +10,7 @@ declare module "@remix-run/node" {
 
 export default defineConfig({
   plugins: [
-    remix({
+    process.env.VITEST ? null : remix({
       future: {
         v3_fetcherPersist: true,
         v3_relativeSplatPath: true,
@@ -20,5 +20,31 @@ export default defineConfig({
       },
     }),
     tsconfigPaths(),
-  ],
+  ].filter(Boolean),
+  test: {
+    globals: true,
+    environment: "jsdom",
+    browser: {
+      enabled: false,
+    },
+    setupFiles: ["./test/setup.ts"],
+    include: ["./app/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
+    exclude: ["./build/**", "./public/**"],
+    watch: false,
+    root: ".",
+    deps: {
+      optimizer: {
+        web: {
+          include: ["@remix-run/node", "@remix-run/react"],
+        },
+      },
+    },
+    transformMode: {
+      web: [/\.(js|jsx|ts|tsx)$/],
+    },
+    jsx: 'react',
+    jsxFactory: 'React.createElement',
+    jsxFragmentFactory: 'React.Fragment',
+    jsxRuntime: 'automatic',
+  },
 });
