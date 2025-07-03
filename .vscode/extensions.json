@@ -1,0 +1,24 @@
+{
+  "recommendations": [
+    "bradlc.vscode-tailwindcss",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "ms-vscode.vscode-typescript-next",
+    "vitest.explorer",
+    "formulahendry.auto-rename-tag",
+    "christian-kohler.path-intellisense",
+    "ms-vscode.vscode-json",
+    "usernamehw.errorlens",
+    "bradlc.vscode-tailwindcss",
+    "ms-vscode.vscode-jest",
+    "christian-kohler.npm-intellisense",
+    "ms-vscode.vscode-json",
+    "visualstudioexptteam.vscodeintellicode",
+    "ms-vscode.vscode-typescript-next",
+    "gruntfuggly.todo-tree",
+    "oderwat.indent-rainbow",
+    "pkief.material-icon-theme",
+    "github.copilot",
+    "github.copilot-chat"
+  ]
+}
