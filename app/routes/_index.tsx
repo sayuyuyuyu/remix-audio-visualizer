@@ -15,6 +15,12 @@ interface VisualizerConfig {
   solar_system: boolean;
 }
 
+interface ColorTheme {
+  primary: string;
+  secondary: string;
+  accent: string;
+}
+
 export default function Index() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [centerImage, setCenterImage] = useState<string | null>(null);
@@ -25,7 +31,11 @@ export default function Index() {
     frequency: false,
     solar_system: false,
   });
-  const [color, setColor] = useState("#6366f1");
+  const [colorTheme, setColorTheme] = useState<ColorTheme>({
+    primary: "#6366f1",
+    secondary: "#8b5cf6", 
+    accent: "#ec4899"
+  });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -34,7 +44,7 @@ export default function Index() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   
-  // Solar system animation state
+  // Solar system animation state - much slower
   const animationTimeRef = useRef<number>(0);
 
   // Initialize Image object only on the client
@@ -71,6 +81,13 @@ export default function Index() {
     setVisualizerConfig((prev: VisualizerConfig) => ({
       ...prev,
       [type]: !prev[type]
+    }));
+  };
+
+  const updateColorTheme = (colorKey: keyof ColorTheme, value: string) => {
+    setColorTheme((prev: ColorTheme) => ({
+      ...prev,
+      [colorKey]: value
     }));
   };
 
@@ -117,7 +134,7 @@ export default function Index() {
     return () => {
       cancelAnimationFrame(animationFrameId);
     };
-  }, [isPlaying, visualizerConfig, color, centerImage]);
+  }, [isPlaying, visualizerConfig, colorTheme, centerImage]);
 
   const visualize = () => {
     const canvas = canvasRef.current;
@@ -129,8 +146,8 @@ export default function Index() {
         return;
     }
 
-    // Update animation time
-    animationTimeRef.current += 0.02;
+    // Update animation time - much slower for solar system
+    animationTimeRef.current += 0.005;
 
     // Create beautiful gradient background
     const gradient = canvasCtx.createLinearGradient(0, 0, canvas.width, canvas.height);
@@ -146,13 +163,13 @@ export default function Index() {
 
         if (visualizerConfig.waveform) {
             analyser.getByteTimeDomainData(dataArray);
-            canvasCtx.lineWidth = 3;
+            canvasCtx.lineWidth = 4;
             
-            // Create gradient for waveform
+            // Create gradient for waveform using theme colors
             const waveGradient = canvasCtx.createLinearGradient(0, 0, canvas.width, 0);
-            waveGradient.addColorStop(0, color);
-            waveGradient.addColorStop(0.5, `${color}80`);
-            waveGradient.addColorStop(1, color);
+            waveGradient.addColorStop(0, colorTheme.primary);
+            waveGradient.addColorStop(0.5, colorTheme.secondary);
+            waveGradient.addColorStop(1, colorTheme.accent);
             canvasCtx.strokeStyle = waveGradient;
             
             canvasCtx.beginPath();
@@ -160,7 +177,8 @@ export default function Index() {
             let x = 0;
             for (let i = 0; i < bufferLength; i++) {
                 const v = dataArray[i] / 128.0;
-                const y = (v * canvas.height) / 2;
+                // Increased amplitude for larger display
+                const y = (v * canvas.height) / 1.5;
                 if (i === 0) canvasCtx.moveTo(x, y);
                 else canvasCtx.lineTo(x, y);
                 x += sliceWidth;
@@ -171,20 +189,33 @@ export default function Index() {
 
         if (visualizerConfig.frequency) {
             analyser.getByteFrequencyData(dataArray);
-            const barWidth = (canvas.width / bufferLength) * 2.5;
+            // Increased bar width and reduced gaps for larger display
+            const barWidth = (canvas.width / bufferLength) * 4;
             let x = 0;
             for (let i = 0; i < bufferLength; i++) {
-                const barHeight = dataArray[i];
+                // Increased height multiplier for larger display
+                const barHeight = dataArray[i] * 2.5;
                 
-                // Create gradient for each bar
-                const barGradient = canvasCtx.createLinearGradient(0, canvas.height, 0, canvas.height - barHeight / 2);
-                const hue = (i / bufferLength) * 360;
-                barGradient.addColorStop(0, `hsla(${hue}, 70%, 60%, 0.8)`);
-                barGradient.addColorStop(1, `hsla(${hue}, 70%, 80%, 1)`);
+                // Create gradient for each bar using theme colors
+                const barGradient = canvasCtx.createLinearGradient(0, canvas.height, 0, canvas.height - barHeight);
+                const progress = i / bufferLength;
+                if (progress < 0.33) {
+                    const localProgress = progress * 3;
+                    barGradient.addColorStop(0, colorTheme.primary + '80');
+                    barGradient.addColorStop(1, colorTheme.primary);
+                } else if (progress < 0.66) {
+                    const localProgress = (progress - 0.33) * 3;
+                    barGradient.addColorStop(0, colorTheme.secondary + '80');
+                    barGradient.addColorStop(1, colorTheme.secondary);
+                } else {
+                    const localProgress = (progress - 0.66) * 3;
+                    barGradient.addColorStop(0, colorTheme.accent + '80');
+                    barGradient.addColorStop(1, colorTheme.accent);
+                }
                 
                 canvasCtx.fillStyle = barGradient;
-                canvasCtx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2);
-                x += barWidth + 1;
+                canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                x += barWidth + 0.5;
             }
         }
 
@@ -194,28 +225,39 @@ export default function Index() {
             const centerY = canvas.height / 2;
             const imageRadius = 100;
 
-            const radius = imageRadius + 30;
-            const bars = bufferLength * 0.7;
+            // Increased radius for larger display
+            const radius = imageRadius + 50;
+            const bars = bufferLength * 0.8;
 
             for (let i = 0; i < bars; i++) {
-                const barHeight = dataArray[i] * 0.6;
+                // Increased height multiplier for larger display
+                const barHeight = dataArray[i] * 1.2;
                 if (barHeight < 1) continue;
 
                 const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
-                const hue = (i / bars) * 360;
+                const progress = i / bars;
                 
-                // Create gradient for circular bars
+                // Create gradient for circular bars using theme colors
+                let barColor;
+                if (progress < 0.33) {
+                    barColor = colorTheme.primary;
+                } else if (progress < 0.66) {
+                    barColor = colorTheme.secondary;
+                } else {
+                    barColor = colorTheme.accent;
+                }
+                
                 const circularGradient = canvasCtx.createLinearGradient(
                     centerX + radius * Math.cos(angle), 
                     centerY + radius * Math.sin(angle),
                     centerX + (radius + barHeight) * Math.cos(angle), 
                     centerY + (radius + barHeight) * Math.sin(angle)
                 );
-                circularGradient.addColorStop(0, `hsla(${hue}, 80%, 60%, 0.8)`);
-                circularGradient.addColorStop(1, `hsla(${hue}, 80%, 80%, 1)`);
+                circularGradient.addColorStop(0, barColor + '60');
+                circularGradient.addColorStop(1, barColor);
                 
                 canvasCtx.strokeStyle = circularGradient;
-                canvasCtx.lineWidth = 4;
+                canvasCtx.lineWidth = 5;
 
                 const startX = centerX + radius * Math.cos(angle);
                 const startY = centerY + radius * Math.sin(angle);
@@ -234,45 +276,32 @@ export default function Index() {
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
             
-            // Calculate overall audio intensity for global effects
+            // Calculate overall audio intensity for subtle effects
             const totalIntensity = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
             const intensityFactor = totalIntensity / 255;
 
-            // Draw center "sun" with pulsing effect
-            const sunRadius = 50 + intensityFactor * 40;
-            const sunGradient = canvasCtx.createRadialGradient(centerX, centerY, 0, centerX, centerY, sunRadius);
-            sunGradient.addColorStop(0, `hsla(45, 100%, ${80 + intensityFactor * 20}%, 1)`);
-            sunGradient.addColorStop(0.7, `hsla(35, 100%, ${60 + intensityFactor * 20}%, 0.9)`);
-            sunGradient.addColorStop(1, `hsla(25, 100%, ${40 + intensityFactor * 10}%, 0.3)`);
-            
-            canvasCtx.fillStyle = sunGradient;
-            canvasCtx.beginPath();
-            canvasCtx.arc(centerX, centerY, sunRadius, 0, Math.PI * 2);
-            canvasCtx.fill();
-
-            // Define orbital parameters for different "planets"
+            // Define orbital parameters - much simpler and subtler
             const orbits = [
-                { radius: 140, speed: 1.0, planetCount: 8, size: 7, hueBase: 60 },
-                { radius: 180, speed: 0.7, planetCount: 12, size: 6, hueBase: 120 },
-                { radius: 220, speed: 0.5, planetCount: 16, size: 5, hueBase: 180 },
-                { radius: 260, speed: 0.4, planetCount: 20, size: 4, hueBase: 240 },
-                { radius: 300, speed: 0.25, planetCount: 24, size: 3.5, hueBase: 300 }
+                { radius: 120, speed: 0.02, planetCount: 6, size: 4 },
+                { radius: 180, speed: 0.015, planetCount: 8, size: 3.5 },
+                { radius: 240, speed: 0.01, planetCount: 10, size: 3 },
+                { radius: 300, speed: 0.008, planetCount: 12, size: 2.5 }
             ];
 
-            // Draw orbital paths (glowing circles)
-            canvasCtx.strokeStyle = "rgba(255, 255, 255, 0.2)";
-            canvasCtx.lineWidth = 2;
+            // Draw subtle orbital paths
+            canvasCtx.strokeStyle = "rgba(200, 200, 200, 0.15)";
+            canvasCtx.lineWidth = 1;
             orbits.forEach(orbit => {
-                const dynamicRadius = orbit.radius + intensityFactor * 25;
+                const dynamicRadius = orbit.radius + intensityFactor * 10;
                 canvasCtx.beginPath();
                 canvasCtx.arc(centerX, centerY, dynamicRadius, 0, Math.PI * 2);
                 canvasCtx.stroke();
             });
 
-            // Draw planets on each orbit
+            // Draw planets on each orbit - very subtle and slow
             orbits.forEach((orbit, orbitIndex) => {
-                const dynamicRadius = orbit.radius + intensityFactor * 25;
-                const dynamicSpeed = orbit.speed * (1 + intensityFactor * 3);
+                const dynamicRadius = orbit.radius + intensityFactor * 10;
+                const dynamicSpeed = orbit.speed * (1 + intensityFactor * 0.5);
                 
                 for (let i = 0; i < orbit.planetCount; i++) {
                     // Calculate audio data index for this planet
@@ -288,56 +317,37 @@ export default function Index() {
                     const planetX = centerX + dynamicRadius * Math.cos(totalAngle);
                     const planetY = centerY + dynamicRadius * Math.sin(totalAngle);
 
-                    // Planet size affected by audio
-                    const planetSize = orbit.size * (1 + normalizedAudio * 2.5);
+                    // Planet size - subtle variation
+                    const planetSize = orbit.size * (1 + normalizedAudio * 0.3);
                     
-                    // Planet color with audio-reactive hue and brightness
-                    const hue = (orbit.hueBase + (i / orbit.planetCount) * 60) % 360;
-                    const brightness = 50 + normalizedAudio * 50;
-                    const saturation = 80 + normalizedAudio * 20;
+                    // Subtle planet colors using theme
+                    const themeColors = [colorTheme.primary, colorTheme.secondary, colorTheme.accent];
+                    const baseColor = themeColors[orbitIndex % themeColors.length];
                     
-                    // Draw planet with glow effect for high audio values
-                    if (normalizedAudio > 0.3) {
-                        // Enhanced glow effect
-                        const glowRadius = planetSize * 4;
-                        const glowGradient = canvasCtx.createRadialGradient(
-                            planetX, planetY, 0, 
-                            planetX, planetY, glowRadius
-                        );
-                        glowGradient.addColorStop(0, `hsla(${hue}, ${saturation}%, ${brightness}%, 0.9)`);
-                        glowGradient.addColorStop(0.5, `hsla(${hue}, ${saturation}%, ${brightness}%, 0.4)`);
-                        glowGradient.addColorStop(1, `hsla(${hue}, ${saturation}%, ${brightness}%, 0)`);
-                        
-                        canvasCtx.fillStyle = glowGradient;
-                        canvasCtx.beginPath();
-                        canvasCtx.arc(planetX, planetY, glowRadius, 0, Math.PI * 2);
-                        canvasCtx.fill();
-                    }
-
-                    // Draw main planet with gradient
-                    const planetGradient = canvasCtx.createRadialGradient(
-                        planetX - planetSize * 0.3, planetY - planetSize * 0.3, 0,
-                        planetX, planetY, planetSize
-                    );
-                    planetGradient.addColorStop(0, `hsl(${hue}, ${saturation}%, ${brightness + 20}%)`);
-                    planetGradient.addColorStop(1, `hsl(${hue}, ${saturation}%, ${brightness}%)`);
+                    // Parse hex color to extract RGB values
+                    const r = parseInt(baseColor.slice(1, 3), 16);
+                    const g = parseInt(baseColor.slice(3, 5), 16);
+                    const b = parseInt(baseColor.slice(5, 7), 16);
                     
-                    canvasCtx.fillStyle = planetGradient;
+                    // Create subtle planet color
+                    const opacity = 0.6 + normalizedAudio * 0.3;
+                    canvasCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+                    
                     canvasCtx.beginPath();
                     canvasCtx.arc(planetX, planetY, planetSize, 0, Math.PI * 2);
                     canvasCtx.fill();
 
-                    // Draw enhanced trail effect for active planets
-                    if (normalizedAudio > 0.2) {
-                        const trailLength = 15;
+                    // Very subtle trail effect
+                    if (normalizedAudio > 0.4) {
+                        const trailLength = 8;
                         for (let t = 1; t <= trailLength; t++) {
-                            const trailAngle = totalAngle - (t * 0.08 * dynamicSpeed);
+                            const trailAngle = totalAngle - (t * 0.05 * dynamicSpeed);
                             const trailX = centerX + dynamicRadius * Math.cos(trailAngle);
                             const trailY = centerY + dynamicRadius * Math.sin(trailAngle);
-                            const trailAlpha = (1 - t / trailLength) * normalizedAudio * 0.8;
-                            const trailSize = planetSize * (1 - t / trailLength) * 0.5;
+                            const trailOpacity = (1 - t / trailLength) * normalizedAudio * 0.2;
+                            const trailSize = planetSize * (1 - t / trailLength) * 0.4;
                             
-                            canvasCtx.fillStyle = `hsla(${hue}, ${saturation}%, ${brightness}%, ${trailAlpha})`;
+                            canvasCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${trailOpacity})`;
                             canvasCtx.beginPath();
                             canvasCtx.arc(trailX, trailY, trailSize, 0, Math.PI * 2);
                             canvasCtx.fill();
@@ -345,23 +355,6 @@ export default function Index() {
                     }
                 }
             });
-
-            // Draw enhanced connecting lines between orbits for dramatic effect during high intensity
-            if (intensityFactor > 0.5) {
-                canvasCtx.strokeStyle = `rgba(255, 255, 255, ${(intensityFactor - 0.5) * 0.6})`;
-                canvasCtx.lineWidth = 2;
-                
-                for (let i = 0; i < 8; i++) {
-                    const angle = (i / 8) * Math.PI * 2 + animationTimeRef.current * 0.3;
-                    const innerRadius = 100 + intensityFactor * 20;
-                    const outerRadius = 320 + intensityFactor * 30;
-                    
-                    canvasCtx.beginPath();
-                    canvasCtx.moveTo(centerX + innerRadius * Math.cos(angle), centerY + innerRadius * Math.sin(angle));
-                    canvasCtx.lineTo(centerX + outerRadius * Math.cos(angle), centerY + outerRadius * Math.sin(angle));
-                    canvasCtx.stroke();
-                }
-            }
         }
     }
 
@@ -371,8 +364,8 @@ export default function Index() {
         const centerY = canvas.height / 2;
         const imageRadius = 100;
         
-        // Add glow around center image
-        canvasCtx.shadowColor = color;
+        // Add glow around center image using theme color
+        canvasCtx.shadowColor = colorTheme.primary;
         canvasCtx.shadowBlur = 20;
         
         canvasCtx.save();
@@ -471,27 +464,52 @@ export default function Index() {
                 </div>
               </div>
 
-              {/* Color Picker */}
-              {(visualizerConfig.waveform || visualizerConfig.frequency) && (
-                <div className="bg-slate-50/50 p-6 rounded-xl border border-slate-200/50">
-                  <label htmlFor="color" className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
-                    <span>🎨</span> Color Theme
-                  </label>
-                  <div className="flex items-center gap-4">
+              {/* Color Theme Customization */}
+              <div className="bg-slate-50/50 p-6 rounded-xl border border-slate-200/50">
+                <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                  <span>�</span> Color Theme
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="flex flex-col items-center gap-2">
+                    <label className="text-sm font-medium text-slate-600">Primary</label>
                     <input 
                       type="color" 
-                      id="color" 
-                      value={color} 
-                      onChange={(e) => setColor(e.target.value)} 
-                      className="w-16 h-16 rounded-xl border-4 border-white shadow-lg cursor-pointer hover:scale-105 transition-transform"
+                      value={colorTheme.primary} 
+                      onChange={(e) => updateColorTheme('primary', e.target.value)} 
+                      className="w-12 h-12 rounded-lg border-4 border-white shadow-lg cursor-pointer hover:scale-105 transition-transform"
                     />
-                    <div className="text-sm text-slate-600">
-                      <div className="font-medium">Selected: {color}</div>
-                      <div className="text-xs text-slate-500">Choose your theme color</div>
-                    </div>
+                    <span className="text-xs text-slate-500">{colorTheme.primary}</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    <label className="text-sm font-medium text-slate-600">Secondary</label>
+                    <input 
+                      type="color" 
+                      value={colorTheme.secondary} 
+                      onChange={(e) => updateColorTheme('secondary', e.target.value)} 
+                      className="w-12 h-12 rounded-lg border-4 border-white shadow-lg cursor-pointer hover:scale-105 transition-transform"
+                    />
+                    <span className="text-xs text-slate-500">{colorTheme.secondary}</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    <label className="text-sm font-medium text-slate-600">Accent</label>
+                    <input 
+                      type="color" 
+                      value={colorTheme.accent} 
+                      onChange={(e) => updateColorTheme('accent', e.target.value)} 
+                      className="w-12 h-12 rounded-lg border-4 border-white shadow-lg cursor-pointer hover:scale-105 transition-transform"
+                    />
+                    <span className="text-xs text-slate-500">{colorTheme.accent}</span>
                   </div>
                 </div>
-              )}
+                <div className="mt-4 flex justify-center">
+                  <button 
+                    onClick={() => setColorTheme({primary: "#6366f1", secondary: "#8b5cf6", accent: "#ec4899"})}
+                    className="text-sm px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg transition-colors text-slate-700"
+                  >
+                    Reset to Default
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -499,7 +517,7 @@ export default function Index() {
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-sm text-slate-500 font-medium">
-            🎵 Select multiple visualizers to create unique combinations
+            🎵 Select multiple visualizers and customize colors for unique combinations
           </p>
         </div>
       </div>
