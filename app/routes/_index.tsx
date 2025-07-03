@@ -177,8 +177,8 @@ export default function Index() {
             let x = 0;
             for (let i = 0; i < bufferLength; i++) {
                 const v = dataArray[i] / 128.0;
-                // Adjusted amplitude to fit screen
-                const y = (v * canvas.height) / 1.8;
+                // Adjusted amplitude with better sensitivity
+                const y = ((v - 1) * canvas.height) / 3 + canvas.height / 2;
                 if (i === 0) canvasCtx.moveTo(x, y);
                 else canvasCtx.lineTo(x, y);
                 x += sliceWidth;
@@ -197,8 +197,11 @@ export default function Index() {
             
             for (let i = 0; i < maxBars; i++) {
                 const dataIndex = Math.floor((i / maxBars) * bufferLength);
-                // Adjusted height to fit screen
-                const barHeight = Math.min(dataArray[dataIndex] * 1.8, canvas.height * 0.8);
+                // Better sensitivity - scale down and add threshold
+                const rawValue = dataArray[dataIndex];
+                const threshold = 20; // Minimum threshold
+                const scaledValue = rawValue > threshold ? (rawValue - threshold) * 1.2 : 0;
+                const barHeight = Math.min(scaledValue, canvas.height * 0.7);
                 
                 // Create gradient for each bar using theme colors
                 const barGradient = canvasCtx.createLinearGradient(0, canvas.height, 0, canvas.height - barHeight);
@@ -232,9 +235,12 @@ export default function Index() {
             const bars = bufferLength * 0.8;
 
             for (let i = 0; i < bars; i++) {
-                // Adjusted height to fit screen
-                const maxBarHeight = Math.min(canvas.width, canvas.height) * 0.15;
-                const barHeight = Math.min(dataArray[i] * 1.2, maxBarHeight);
+                // Better sensitivity for circular
+                const rawValue = dataArray[i];
+                const threshold = 15; // Minimum threshold
+                const scaledValue = rawValue > threshold ? (rawValue - threshold) * 0.8 : 0;
+                const maxBarHeight = Math.min(canvas.width, canvas.height) * 0.12;
+                const barHeight = Math.min(scaledValue, maxBarHeight);
                 if (barHeight < 1) continue;
 
                 const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
@@ -279,36 +285,43 @@ export default function Index() {
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
             
-            // Calculate overall audio intensity for wave effects
+            // Calculate overall audio intensity for general effects
             const totalIntensity = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
             const intensityFactor = totalIntensity / 255;
-            const waveIntensity = intensityFactor * 0.8; // Scale wave effect based on audio
 
             // Define orbital parameters with different rotation speeds
             const orbits = [
-                { radius: 120, speed: 0.3, planetCount: 6, size: 4, waveAmplitude: 8, waveFreq: 4 },
-                { radius: 180, speed: -0.2, planetCount: 8, size: 3.5, waveAmplitude: 12, waveFreq: 3 },
-                { radius: 240, speed: 0.15, planetCount: 10, size: 3, waveAmplitude: 15, waveFreq: 5 },
-                { radius: 300, speed: -0.1, planetCount: 12, size: 2.5, waveAmplitude: 10, waveFreq: 2 }
+                { radius: 120, speed: 0.3, planetCount: 6, size: 4 },
+                { radius: 180, speed: -0.2, planetCount: 8, size: 3.5 },
+                { radius: 240, speed: 0.15, planetCount: 10, size: 3 },
+                { radius: 300, speed: -0.1, planetCount: 12, size: 2.5 }
             ];
 
-            // Draw orbital paths - circular by default, wavy with audio
+            // Draw orbital paths - waveform-like jagged distortion based on audio data
             canvasCtx.strokeStyle = "rgba(200, 200, 200, 0.2)";
             canvasCtx.lineWidth = 1;
-            orbits.forEach(orbit => {
+            orbits.forEach((orbit, orbitIndex) => {
                 canvasCtx.beginPath();
                 let isFirstPoint = true;
+                const segmentCount = 64; // Number of segments around the circle
                 
-                for (let angle = 0; angle <= Math.PI * 2; angle += 0.1) {
-                    let dynamicRadius;
+                for (let i = 0; i <= segmentCount; i++) {
+                    const angle = (i / segmentCount) * Math.PI * 2;
                     
-                    if (waveIntensity > 0.1) {
-                        // Create wavy radius when there's sufficient audio
-                        const waveOffset = Math.sin(angle * orbit.waveFreq + animationTimeRef.current) * orbit.waveAmplitude * waveIntensity;
-                        dynamicRadius = orbit.radius + waveOffset + intensityFactor * 5;
-                    } else {
-                        // Perfect circle when no significant audio
-                        dynamicRadius = orbit.radius;
+                    // Calculate which audio data point corresponds to this angle
+                    const dataIndex = Math.floor((i / segmentCount) * bufferLength);
+                    const audioValue = dataArray[dataIndex] || 0;
+                    
+                    // Apply threshold and scaling for better sensitivity
+                    const threshold = 20;
+                    const scaledAudio = audioValue > threshold ? (audioValue - threshold) * 0.3 : 0;
+                    
+                    // Create jagged distortion only where there's significant audio
+                    let dynamicRadius = orbit.radius;
+                    if (scaledAudio > 5) {
+                        // Jagged distortion based on specific audio data at this position
+                        const distortion = (scaledAudio - 5) * 0.8;
+                        dynamicRadius = orbit.radius + distortion;
                     }
                     
                     const x = centerX + dynamicRadius * Math.cos(angle);
@@ -333,25 +346,31 @@ export default function Index() {
                     const rotationAngle = animationTimeRef.current * orbit.speed;
                     const totalAngle = baseAngle + rotationAngle;
                     
-                    // Radius calculation - circular by default, wavy with audio
-                    let dynamicRadius;
-                    if (waveIntensity > 0.1) {
-                        const waveOffset = Math.sin(totalAngle * orbit.waveFreq + animationTimeRef.current) * orbit.waveAmplitude * waveIntensity;
-                        dynamicRadius = orbit.radius + waveOffset + intensityFactor * 5;
-                    } else {
-                        dynamicRadius = orbit.radius;
+                    // Calculate radius with position-specific audio data
+                    const segmentPosition = (totalAngle % (Math.PI * 2)) / (Math.PI * 2);
+                    const dataIndex = Math.floor(segmentPosition * bufferLength);
+                    const audioValue = dataArray[dataIndex] || 0;
+                    
+                    // Apply threshold and scaling
+                    const threshold = 20;
+                    const scaledAudio = audioValue > threshold ? (audioValue - threshold) * 0.3 : 0;
+                    
+                    let dynamicRadius = orbit.radius;
+                    if (scaledAudio > 5) {
+                        const distortion = (scaledAudio - 5) * 0.8;
+                        dynamicRadius = orbit.radius + distortion;
                     }
                     
                     const planetX = centerX + dynamicRadius * Math.cos(totalAngle);
                     const planetY = centerY + dynamicRadius * Math.sin(totalAngle);
 
-                    // Calculate audio data index for this planet (optional effect)
-                    const dataIndex = Math.floor((i / orbit.planetCount) * bufferLength);
-                    const audioValue = dataArray[dataIndex] || 0;
-                    const normalizedAudio = audioValue / 255;
+                    // Calculate audio data index for this planet
+                    const planetDataIndex = Math.floor((i / orbit.planetCount) * bufferLength);
+                    const planetAudioValue = dataArray[planetDataIndex] || 0;
+                    const normalizedAudio = Math.max(0, (planetAudioValue - 20) / 235); // Better normalization
 
-                    // Planet size - subtle variation
-                    const planetSize = orbit.size * (1 + normalizedAudio * 0.2);
+                    // Planet size - more sensitive variation
+                    const planetSize = orbit.size * (1 + normalizedAudio * 0.4);
                     
                     // Subtle planet colors using theme
                     const themeColors = [colorTheme.primary, colorTheme.secondary, colorTheme.accent];
@@ -362,29 +381,35 @@ export default function Index() {
                     const g = parseInt(baseColor.slice(3, 5), 16);
                     const b = parseInt(baseColor.slice(5, 7), 16);
                     
-                    // Create subtle planet color
-                    const opacity = 0.6 + normalizedAudio * 0.2;
+                    // Create planet color with better sensitivity
+                    const opacity = 0.5 + normalizedAudio * 0.4;
                     canvasCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
                     
                     canvasCtx.beginPath();
                     canvasCtx.arc(planetX, planetY, planetSize, 0, Math.PI * 2);
                     canvasCtx.fill();
 
-                    // Very subtle trail effect
-                    if (normalizedAudio > 0.4) {
+                    // More sensitive trail effect
+                    if (normalizedAudio > 0.2) {
                         const trailLength = 6;
                         for (let t = 1; t <= trailLength; t++) {
                             const trailAngle = totalAngle - (t * 0.03);
-                            let trailRadius;
-                            if (waveIntensity > 0.1) {
-                                const trailWaveOffset = Math.sin(trailAngle * orbit.waveFreq + animationTimeRef.current) * orbit.waveAmplitude * waveIntensity;
-                                trailRadius = orbit.radius + trailWaveOffset + intensityFactor * 5;
-                            } else {
-                                trailRadius = orbit.radius;
+                            
+                            // Calculate trail radius with position-specific audio
+                            const trailSegmentPosition = (trailAngle % (Math.PI * 2)) / (Math.PI * 2);
+                            const trailDataIndex = Math.floor(trailSegmentPosition * bufferLength);
+                            const trailAudioValue = dataArray[trailDataIndex] || 0;
+                            const trailScaledAudio = trailAudioValue > threshold ? (trailAudioValue - threshold) * 0.3 : 0;
+                            
+                            let trailRadius = orbit.radius;
+                            if (trailScaledAudio > 5) {
+                                const trailDistortion = (trailScaledAudio - 5) * 0.8;
+                                trailRadius = orbit.radius + trailDistortion;
                             }
+                            
                             const trailX = centerX + trailRadius * Math.cos(trailAngle);
                             const trailY = centerY + trailRadius * Math.sin(trailAngle);
-                            const trailOpacity = (1 - t / trailLength) * normalizedAudio * 0.15;
+                            const trailOpacity = (1 - t / trailLength) * normalizedAudio * 0.3;
                             const trailSize = planetSize * (1 - t / trailLength) * 0.4;
                             
                             canvasCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${trailOpacity})`;
