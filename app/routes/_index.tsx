@@ -44,7 +44,7 @@ export default function Index() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   
-  // Solar system animation state - much slower
+  // Solar system animation state - independent rotation
   const animationTimeRef = useRef<number>(0);
 
   // Initialize Image object only on the client
@@ -146,8 +146,8 @@ export default function Index() {
         return;
     }
 
-    // Update animation time - much slower for solar system
-    animationTimeRef.current += 0.005;
+    // Update animation time - continuous for solar system
+    animationTimeRef.current += 0.01;
 
     // Create beautiful gradient background
     const gradient = canvasCtx.createLinearGradient(0, 0, canvas.width, canvas.height);
@@ -177,8 +177,8 @@ export default function Index() {
             let x = 0;
             for (let i = 0; i < bufferLength; i++) {
                 const v = dataArray[i] / 128.0;
-                // Increased amplitude for larger display
-                const y = (v * canvas.height) / 1.5;
+                // Adjusted amplitude to fit screen
+                const y = (v * canvas.height) / 1.8;
                 if (i === 0) canvasCtx.moveTo(x, y);
                 else canvasCtx.lineTo(x, y);
                 x += sliceWidth;
@@ -189,33 +189,34 @@ export default function Index() {
 
         if (visualizerConfig.frequency) {
             analyser.getByteFrequencyData(dataArray);
-            // Increased bar width and reduced gaps for larger display
-            const barWidth = (canvas.width / bufferLength) * 4;
+            // Adjusted bar width to fit screen width
+            const maxBars = Math.min(bufferLength, 150); // Limit number of bars
+            const barWidth = (canvas.width / maxBars) * 0.8;
+            const barSpacing = (canvas.width / maxBars) * 0.2;
             let x = 0;
-            for (let i = 0; i < bufferLength; i++) {
-                // Increased height multiplier for larger display
-                const barHeight = dataArray[i] * 2.5;
+            
+            for (let i = 0; i < maxBars; i++) {
+                const dataIndex = Math.floor((i / maxBars) * bufferLength);
+                // Adjusted height to fit screen
+                const barHeight = Math.min(dataArray[dataIndex] * 1.8, canvas.height * 0.8);
                 
                 // Create gradient for each bar using theme colors
                 const barGradient = canvasCtx.createLinearGradient(0, canvas.height, 0, canvas.height - barHeight);
-                const progress = i / bufferLength;
+                const progress = i / maxBars;
                 if (progress < 0.33) {
-                    const localProgress = progress * 3;
                     barGradient.addColorStop(0, colorTheme.primary + '80');
                     barGradient.addColorStop(1, colorTheme.primary);
                 } else if (progress < 0.66) {
-                    const localProgress = (progress - 0.33) * 3;
                     barGradient.addColorStop(0, colorTheme.secondary + '80');
                     barGradient.addColorStop(1, colorTheme.secondary);
                 } else {
-                    const localProgress = (progress - 0.66) * 3;
                     barGradient.addColorStop(0, colorTheme.accent + '80');
                     barGradient.addColorStop(1, colorTheme.accent);
                 }
                 
                 canvasCtx.fillStyle = barGradient;
                 canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-                x += barWidth + 0.5;
+                x += barWidth + barSpacing;
             }
         }
 
@@ -225,13 +226,15 @@ export default function Index() {
             const centerY = canvas.height / 2;
             const imageRadius = 100;
 
-            // Increased radius for larger display
-            const radius = imageRadius + 50;
+            // Adjusted radius to fit screen
+            const maxRadius = Math.min(canvas.width, canvas.height) * 0.3;
+            const radius = Math.min(imageRadius + 50, maxRadius);
             const bars = bufferLength * 0.8;
 
             for (let i = 0; i < bars; i++) {
-                // Increased height multiplier for larger display
-                const barHeight = dataArray[i] * 1.2;
+                // Adjusted height to fit screen
+                const maxBarHeight = Math.min(canvas.width, canvas.height) * 0.15;
+                const barHeight = Math.min(dataArray[i] * 1.2, maxBarHeight);
                 if (barHeight < 1) continue;
 
                 const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
@@ -276,49 +279,66 @@ export default function Index() {
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
             
-            // Calculate overall audio intensity for subtle effects
+            // Calculate overall audio intensity for subtle effects (optional)
             const totalIntensity = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
             const intensityFactor = totalIntensity / 255;
 
-            // Define orbital parameters - much simpler and subtler
+            // Define orbital parameters with different rotation speeds
             const orbits = [
-                { radius: 120, speed: 0.02, planetCount: 6, size: 4 },
-                { radius: 180, speed: 0.015, planetCount: 8, size: 3.5 },
-                { radius: 240, speed: 0.01, planetCount: 10, size: 3 },
-                { radius: 300, speed: 0.008, planetCount: 12, size: 2.5 }
+                { radius: 120, speed: 0.3, planetCount: 6, size: 4, waveAmplitude: 8, waveFreq: 4 },
+                { radius: 180, speed: -0.2, planetCount: 8, size: 3.5, waveAmplitude: 12, waveFreq: 3 },
+                { radius: 240, speed: 0.15, planetCount: 10, size: 3, waveAmplitude: 15, waveFreq: 5 },
+                { radius: 300, speed: -0.1, planetCount: 12, size: 2.5, waveAmplitude: 10, waveFreq: 2 }
             ];
 
-            // Draw subtle orbital paths
-            canvasCtx.strokeStyle = "rgba(200, 200, 200, 0.15)";
+            // Draw wavy orbital paths
+            canvasCtx.strokeStyle = "rgba(200, 200, 200, 0.2)";
             canvasCtx.lineWidth = 1;
             orbits.forEach(orbit => {
-                const dynamicRadius = orbit.radius + intensityFactor * 10;
                 canvasCtx.beginPath();
-                canvasCtx.arc(centerX, centerY, dynamicRadius, 0, Math.PI * 2);
+                let isFirstPoint = true;
+                
+                for (let angle = 0; angle <= Math.PI * 2; angle += 0.1) {
+                    // Create wavy radius using sine wave
+                    const waveOffset = Math.sin(angle * orbit.waveFreq + animationTimeRef.current) * orbit.waveAmplitude;
+                    const dynamicRadius = orbit.radius + waveOffset + intensityFactor * 5;
+                    
+                    const x = centerX + dynamicRadius * Math.cos(angle);
+                    const y = centerY + dynamicRadius * Math.sin(angle);
+                    
+                    if (isFirstPoint) {
+                        canvasCtx.moveTo(x, y);
+                        isFirstPoint = false;
+                    } else {
+                        canvasCtx.lineTo(x, y);
+                    }
+                }
+                canvasCtx.closePath();
                 canvasCtx.stroke();
             });
 
-            // Draw planets on each orbit - very subtle and slow
+            // Draw planets on each orbit with independent rotation
             orbits.forEach((orbit, orbitIndex) => {
-                const dynamicRadius = orbit.radius + intensityFactor * 10;
-                const dynamicSpeed = orbit.speed * (1 + intensityFactor * 0.5);
-                
                 for (let i = 0; i < orbit.planetCount; i++) {
-                    // Calculate audio data index for this planet
-                    const dataIndex = Math.floor((i / orbit.planetCount) * bufferLength);
-                    const audioValue = dataArray[dataIndex] || 0;
-                    const normalizedAudio = audioValue / 255;
-
-                    // Calculate planet position
+                    // Independent rotation for each orbit
                     const baseAngle = (i / orbit.planetCount) * Math.PI * 2;
-                    const rotationAngle = animationTimeRef.current * dynamicSpeed;
+                    const rotationAngle = animationTimeRef.current * orbit.speed;
                     const totalAngle = baseAngle + rotationAngle;
+                    
+                    // Wavy radius calculation
+                    const waveOffset = Math.sin(totalAngle * orbit.waveFreq + animationTimeRef.current) * orbit.waveAmplitude;
+                    const dynamicRadius = orbit.radius + waveOffset + intensityFactor * 5;
                     
                     const planetX = centerX + dynamicRadius * Math.cos(totalAngle);
                     const planetY = centerY + dynamicRadius * Math.sin(totalAngle);
 
+                    // Calculate audio data index for this planet (optional effect)
+                    const dataIndex = Math.floor((i / orbit.planetCount) * bufferLength);
+                    const audioValue = dataArray[dataIndex] || 0;
+                    const normalizedAudio = audioValue / 255;
+
                     // Planet size - subtle variation
-                    const planetSize = orbit.size * (1 + normalizedAudio * 0.3);
+                    const planetSize = orbit.size * (1 + normalizedAudio * 0.2);
                     
                     // Subtle planet colors using theme
                     const themeColors = [colorTheme.primary, colorTheme.secondary, colorTheme.accent];
@@ -330,7 +350,7 @@ export default function Index() {
                     const b = parseInt(baseColor.slice(5, 7), 16);
                     
                     // Create subtle planet color
-                    const opacity = 0.6 + normalizedAudio * 0.3;
+                    const opacity = 0.6 + normalizedAudio * 0.2;
                     canvasCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
                     
                     canvasCtx.beginPath();
@@ -339,12 +359,14 @@ export default function Index() {
 
                     // Very subtle trail effect
                     if (normalizedAudio > 0.4) {
-                        const trailLength = 8;
+                        const trailLength = 6;
                         for (let t = 1; t <= trailLength; t++) {
-                            const trailAngle = totalAngle - (t * 0.05 * dynamicSpeed);
-                            const trailX = centerX + dynamicRadius * Math.cos(trailAngle);
-                            const trailY = centerY + dynamicRadius * Math.sin(trailAngle);
-                            const trailOpacity = (1 - t / trailLength) * normalizedAudio * 0.2;
+                            const trailAngle = totalAngle - (t * 0.03);
+                            const trailWaveOffset = Math.sin(trailAngle * orbit.waveFreq + animationTimeRef.current) * orbit.waveAmplitude;
+                            const trailRadius = orbit.radius + trailWaveOffset + intensityFactor * 5;
+                            const trailX = centerX + trailRadius * Math.cos(trailAngle);
+                            const trailY = centerY + trailRadius * Math.sin(trailAngle);
+                            const trailOpacity = (1 - t / trailLength) * normalizedAudio * 0.15;
                             const trailSize = planetSize * (1 - t / trailLength) * 0.4;
                             
                             canvasCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${trailOpacity})`;
@@ -356,10 +378,86 @@ export default function Index() {
                 }
             });
         }
+    } else {
+        // Continue solar system animation even without audio
+        if (visualizerConfig.solar_system) {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            // Define orbital parameters with different rotation speeds
+            const orbits = [
+                { radius: 120, speed: 0.3, planetCount: 6, size: 4, waveAmplitude: 8, waveFreq: 4 },
+                { radius: 180, speed: -0.2, planetCount: 8, size: 3.5, waveAmplitude: 12, waveFreq: 3 },
+                { radius: 240, speed: 0.15, planetCount: 10, size: 3, waveAmplitude: 15, waveFreq: 5 },
+                { radius: 300, speed: -0.1, planetCount: 12, size: 2.5, waveAmplitude: 10, waveFreq: 2 }
+            ];
+
+            // Draw wavy orbital paths
+            canvasCtx.strokeStyle = "rgba(200, 200, 200, 0.2)";
+            canvasCtx.lineWidth = 1;
+            orbits.forEach(orbit => {
+                canvasCtx.beginPath();
+                let isFirstPoint = true;
+                
+                for (let angle = 0; angle <= Math.PI * 2; angle += 0.1) {
+                    // Create wavy radius using sine wave
+                    const waveOffset = Math.sin(angle * orbit.waveFreq + animationTimeRef.current) * orbit.waveAmplitude;
+                    const dynamicRadius = orbit.radius + waveOffset;
+                    
+                    const x = centerX + dynamicRadius * Math.cos(angle);
+                    const y = centerY + dynamicRadius * Math.sin(angle);
+                    
+                    if (isFirstPoint) {
+                        canvasCtx.moveTo(x, y);
+                        isFirstPoint = false;
+                    } else {
+                        canvasCtx.lineTo(x, y);
+                    }
+                }
+                canvasCtx.closePath();
+                canvasCtx.stroke();
+            });
+
+            // Draw planets on each orbit with independent rotation
+            orbits.forEach((orbit, orbitIndex) => {
+                for (let i = 0; i < orbit.planetCount; i++) {
+                    // Independent rotation for each orbit
+                    const baseAngle = (i / orbit.planetCount) * Math.PI * 2;
+                    const rotationAngle = animationTimeRef.current * orbit.speed;
+                    const totalAngle = baseAngle + rotationAngle;
+                    
+                    // Wavy radius calculation
+                    const waveOffset = Math.sin(totalAngle * orbit.waveFreq + animationTimeRef.current) * orbit.waveAmplitude;
+                    const dynamicRadius = orbit.radius + waveOffset;
+                    
+                    const planetX = centerX + dynamicRadius * Math.cos(totalAngle);
+                    const planetY = centerY + dynamicRadius * Math.sin(totalAngle);
+
+                    // Planet size
+                    const planetSize = orbit.size;
+                    
+                    // Planet colors using theme
+                    const themeColors = [colorTheme.primary, colorTheme.secondary, colorTheme.accent];
+                    const baseColor = themeColors[orbitIndex % themeColors.length];
+                    
+                    // Parse hex color to extract RGB values
+                    const r = parseInt(baseColor.slice(1, 3), 16);
+                    const g = parseInt(baseColor.slice(3, 5), 16);
+                    const b = parseInt(baseColor.slice(5, 7), 16);
+                    
+                    // Create planet color
+                    canvasCtx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.7)`;
+                    
+                    canvasCtx.beginPath();
+                    canvasCtx.arc(planetX, planetY, planetSize, 0, Math.PI * 2);
+                    canvasCtx.fill();
+                }
+            });
+        }
     }
 
-    // Draw center image last, on top of the visualizer (except for solar system)
-    if (centerImage && imageRef.current?.complete && !visualizerConfig.solar_system) {
+    // Draw center image ALWAYS on top (moved to end)
+    if (centerImage && imageRef.current?.complete) {
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         const imageRadius = 100;
@@ -467,7 +565,7 @@ export default function Index() {
               {/* Color Theme Customization */}
               <div className="bg-slate-50/50 p-6 rounded-xl border border-slate-200/50">
                 <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
-                  <span>�</span> Color Theme
+                  <span>🌈</span> Color Theme
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="flex flex-col items-center gap-2">
