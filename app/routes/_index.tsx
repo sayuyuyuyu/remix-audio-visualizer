@@ -279,9 +279,10 @@ export default function Index() {
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
             
-            // Calculate overall audio intensity for subtle effects (optional)
+            // Calculate overall audio intensity for wave effects
             const totalIntensity = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
             const intensityFactor = totalIntensity / 255;
+            const waveIntensity = intensityFactor * 0.8; // Scale wave effect based on audio
 
             // Define orbital parameters with different rotation speeds
             const orbits = [
@@ -291,7 +292,7 @@ export default function Index() {
                 { radius: 300, speed: -0.1, planetCount: 12, size: 2.5, waveAmplitude: 10, waveFreq: 2 }
             ];
 
-            // Draw wavy orbital paths
+            // Draw orbital paths - circular by default, wavy with audio
             canvasCtx.strokeStyle = "rgba(200, 200, 200, 0.2)";
             canvasCtx.lineWidth = 1;
             orbits.forEach(orbit => {
@@ -299,9 +300,16 @@ export default function Index() {
                 let isFirstPoint = true;
                 
                 for (let angle = 0; angle <= Math.PI * 2; angle += 0.1) {
-                    // Create wavy radius using sine wave
-                    const waveOffset = Math.sin(angle * orbit.waveFreq + animationTimeRef.current) * orbit.waveAmplitude;
-                    const dynamicRadius = orbit.radius + waveOffset + intensityFactor * 5;
+                    let dynamicRadius;
+                    
+                    if (waveIntensity > 0.1) {
+                        // Create wavy radius when there's sufficient audio
+                        const waveOffset = Math.sin(angle * orbit.waveFreq + animationTimeRef.current) * orbit.waveAmplitude * waveIntensity;
+                        dynamicRadius = orbit.radius + waveOffset + intensityFactor * 5;
+                    } else {
+                        // Perfect circle when no significant audio
+                        dynamicRadius = orbit.radius;
+                    }
                     
                     const x = centerX + dynamicRadius * Math.cos(angle);
                     const y = centerY + dynamicRadius * Math.sin(angle);
@@ -325,9 +333,14 @@ export default function Index() {
                     const rotationAngle = animationTimeRef.current * orbit.speed;
                     const totalAngle = baseAngle + rotationAngle;
                     
-                    // Wavy radius calculation
-                    const waveOffset = Math.sin(totalAngle * orbit.waveFreq + animationTimeRef.current) * orbit.waveAmplitude;
-                    const dynamicRadius = orbit.radius + waveOffset + intensityFactor * 5;
+                    // Radius calculation - circular by default, wavy with audio
+                    let dynamicRadius;
+                    if (waveIntensity > 0.1) {
+                        const waveOffset = Math.sin(totalAngle * orbit.waveFreq + animationTimeRef.current) * orbit.waveAmplitude * waveIntensity;
+                        dynamicRadius = orbit.radius + waveOffset + intensityFactor * 5;
+                    } else {
+                        dynamicRadius = orbit.radius;
+                    }
                     
                     const planetX = centerX + dynamicRadius * Math.cos(totalAngle);
                     const planetY = centerY + dynamicRadius * Math.sin(totalAngle);
@@ -362,8 +375,13 @@ export default function Index() {
                         const trailLength = 6;
                         for (let t = 1; t <= trailLength; t++) {
                             const trailAngle = totalAngle - (t * 0.03);
-                            const trailWaveOffset = Math.sin(trailAngle * orbit.waveFreq + animationTimeRef.current) * orbit.waveAmplitude;
-                            const trailRadius = orbit.radius + trailWaveOffset + intensityFactor * 5;
+                            let trailRadius;
+                            if (waveIntensity > 0.1) {
+                                const trailWaveOffset = Math.sin(trailAngle * orbit.waveFreq + animationTimeRef.current) * orbit.waveAmplitude * waveIntensity;
+                                trailRadius = orbit.radius + trailWaveOffset + intensityFactor * 5;
+                            } else {
+                                trailRadius = orbit.radius;
+                            }
                             const trailX = centerX + trailRadius * Math.cos(trailAngle);
                             const trailY = centerY + trailRadius * Math.sin(trailAngle);
                             const trailOpacity = (1 - t / trailLength) * normalizedAudio * 0.15;
@@ -379,46 +397,29 @@ export default function Index() {
             });
         }
     } else {
-        // Continue solar system animation even without audio
+        // Continue solar system animation even without audio - PERFECT CIRCLES
         if (visualizerConfig.solar_system) {
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
 
             // Define orbital parameters with different rotation speeds
             const orbits = [
-                { radius: 120, speed: 0.3, planetCount: 6, size: 4, waveAmplitude: 8, waveFreq: 4 },
-                { radius: 180, speed: -0.2, planetCount: 8, size: 3.5, waveAmplitude: 12, waveFreq: 3 },
-                { radius: 240, speed: 0.15, planetCount: 10, size: 3, waveAmplitude: 15, waveFreq: 5 },
-                { radius: 300, speed: -0.1, planetCount: 12, size: 2.5, waveAmplitude: 10, waveFreq: 2 }
+                { radius: 120, speed: 0.3, planetCount: 6, size: 4 },
+                { radius: 180, speed: -0.2, planetCount: 8, size: 3.5 },
+                { radius: 240, speed: 0.15, planetCount: 10, size: 3 },
+                { radius: 300, speed: -0.1, planetCount: 12, size: 2.5 }
             ];
 
-            // Draw wavy orbital paths
+            // Draw perfect circular orbital paths
             canvasCtx.strokeStyle = "rgba(200, 200, 200, 0.2)";
             canvasCtx.lineWidth = 1;
             orbits.forEach(orbit => {
                 canvasCtx.beginPath();
-                let isFirstPoint = true;
-                
-                for (let angle = 0; angle <= Math.PI * 2; angle += 0.1) {
-                    // Create wavy radius using sine wave
-                    const waveOffset = Math.sin(angle * orbit.waveFreq + animationTimeRef.current) * orbit.waveAmplitude;
-                    const dynamicRadius = orbit.radius + waveOffset;
-                    
-                    const x = centerX + dynamicRadius * Math.cos(angle);
-                    const y = centerY + dynamicRadius * Math.sin(angle);
-                    
-                    if (isFirstPoint) {
-                        canvasCtx.moveTo(x, y);
-                        isFirstPoint = false;
-                    } else {
-                        canvasCtx.lineTo(x, y);
-                    }
-                }
-                canvasCtx.closePath();
+                canvasCtx.arc(centerX, centerY, orbit.radius, 0, Math.PI * 2);
                 canvasCtx.stroke();
             });
 
-            // Draw planets on each orbit with independent rotation
+            // Draw planets on each orbit with independent rotation - PERFECT CIRCLES
             orbits.forEach((orbit, orbitIndex) => {
                 for (let i = 0; i < orbit.planetCount; i++) {
                     // Independent rotation for each orbit
@@ -426,12 +427,9 @@ export default function Index() {
                     const rotationAngle = animationTimeRef.current * orbit.speed;
                     const totalAngle = baseAngle + rotationAngle;
                     
-                    // Wavy radius calculation
-                    const waveOffset = Math.sin(totalAngle * orbit.waveFreq + animationTimeRef.current) * orbit.waveAmplitude;
-                    const dynamicRadius = orbit.radius + waveOffset;
-                    
-                    const planetX = centerX + dynamicRadius * Math.cos(totalAngle);
-                    const planetY = centerY + dynamicRadius * Math.sin(totalAngle);
+                    // Perfect circular radius
+                    const planetX = centerX + orbit.radius * Math.cos(totalAngle);
+                    const planetY = centerY + orbit.radius * Math.sin(totalAngle);
 
                     // Planet size
                     const planetSize = orbit.size;
