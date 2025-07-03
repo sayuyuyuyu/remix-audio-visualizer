@@ -8,12 +8,34 @@ export const meta: MetaFunction = () => {
   ];
 };
 
+interface VisualizerConfig {
+  circular: boolean;
+  waveform: boolean;
+  frequency: boolean;
+  solar_system: boolean;
+}
+
+interface ColorTheme {
+  primary: string;
+  secondary: string;
+  accent: string;
+}
+
 export default function Index() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [centerImage, setCenterImage] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [visualizerType, setVisualizerType] = useState("circular");
-  const [color, setColor] = useState("#ffffff");
+  const [visualizerConfig, setVisualizerConfig] = useState<VisualizerConfig>({
+    circular: true,
+    waveform: false,
+    frequency: false,
+    solar_system: false,
+  });
+  const [colorTheme, setColorTheme] = useState<ColorTheme>({
+    primary: "#6366f1",
+    secondary: "#8b5cf6", 
+    accent: "#ec4899"
+  });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -22,7 +44,7 @@ export default function Index() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   
-  // Solar system animation state
+  // Solar system animation state - independent rotation
   const animationTimeRef = useRef<number>(0);
 
   // Initialize Image object only on the client
@@ -53,6 +75,20 @@ export default function Index() {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const toggleVisualizerType = (type: keyof VisualizerConfig) => {
+    setVisualizerConfig((prev: VisualizerConfig) => ({
+      ...prev,
+      [type]: !prev[type]
+    }));
+  };
+
+  const updateColorTheme = (colorKey: keyof ColorTheme, value: string) => {
+    setColorTheme((prev: ColorTheme) => ({
+      ...prev,
+      [colorKey]: value
+    }));
   };
 
   const togglePlay = () => {
@@ -98,7 +134,7 @@ export default function Index() {
     return () => {
       cancelAnimationFrame(animationFrameId);
     };
-  }, [isPlaying, visualizerType, color, centerImage]);
+  }, [isPlaying, visualizerConfig, colorTheme, centerImage]);
 
   const visualize = () => {
     const canvas = canvasRef.current;
@@ -110,60 +146,127 @@ export default function Index() {
         return;
     }
 
-    // Update animation time
-    animationTimeRef.current += 0.02;
+    // Update animation time - continuous for solar system
+    animationTimeRef.current += 0.01;
 
-    canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
-    canvasCtx.fillStyle = "#000";
+    // Create beautiful gradient background
+    const gradient = canvasCtx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, "rgba(15, 23, 42, 0.95)");
+    gradient.addColorStop(0.5, "rgba(30, 41, 59, 0.9)");
+    gradient.addColorStop(1, "rgba(51, 65, 85, 0.95)");
+    canvasCtx.fillStyle = gradient;
     canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (analyser) {
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
 
-        if (visualizerType === "waveform") {
+        if (visualizerConfig.waveform) {
             analyser.getByteTimeDomainData(dataArray);
-            canvasCtx.lineWidth = 2;
-            canvasCtx.strokeStyle = color;
+            canvasCtx.lineWidth = 4;
+            
+            // Create gradient for waveform using theme colors
+            const waveGradient = canvasCtx.createLinearGradient(0, 0, canvas.width, 0);
+            waveGradient.addColorStop(0, colorTheme.primary);
+            waveGradient.addColorStop(0.5, colorTheme.secondary);
+            waveGradient.addColorStop(1, colorTheme.accent);
+            canvasCtx.strokeStyle = waveGradient;
+            
             canvasCtx.beginPath();
             const sliceWidth = (canvas.width * 1.0) / bufferLength;
             let x = 0;
             for (let i = 0; i < bufferLength; i++) {
                 const v = dataArray[i] / 128.0;
-                const y = (v * canvas.height) / 2;
+                // Adjusted amplitude with better sensitivity
+                const y = ((v - 1) * canvas.height) / 3 + canvas.height / 2;
                 if (i === 0) canvasCtx.moveTo(x, y);
                 else canvasCtx.lineTo(x, y);
                 x += sliceWidth;
             }
             canvasCtx.lineTo(canvas.width, canvas.height / 2);
             canvasCtx.stroke();
-        } else if (visualizerType === "frequency") {
+        }
+
+        if (visualizerConfig.frequency) {
             analyser.getByteFrequencyData(dataArray);
-            const barWidth = (canvas.width / bufferLength) * 2.5;
+            // Adjusted bar width to fit screen width
+            const maxBars = Math.min(bufferLength, 150); // Limit number of bars
+            const barWidth = (canvas.width / maxBars) * 0.8;
+            const barSpacing = (canvas.width / maxBars) * 0.2;
             let x = 0;
-            for (let i = 0; i < bufferLength; i++) {
-                const barHeight = dataArray[i];
-                canvasCtx.fillStyle = color;
-                canvasCtx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2);
-                x += barWidth + 1;
+            
+            for (let i = 0; i < maxBars; i++) {
+                const dataIndex = Math.floor((i / maxBars) * bufferLength);
+                // Better sensitivity - scale down and add threshold
+                const rawValue = dataArray[dataIndex];
+                const threshold = 20; // Minimum threshold
+                const scaledValue = rawValue > threshold ? (rawValue - threshold) * 1.2 : 0;
+                const barHeight = Math.min(scaledValue, canvas.height * 0.7);
+                
+                // Create gradient for each bar using theme colors
+                const barGradient = canvasCtx.createLinearGradient(0, canvas.height, 0, canvas.height - barHeight);
+                const progress = i / maxBars;
+                if (progress < 0.33) {
+                    barGradient.addColorStop(0, colorTheme.primary + '80');
+                    barGradient.addColorStop(1, colorTheme.primary);
+                } else if (progress < 0.66) {
+                    barGradient.addColorStop(0, colorTheme.secondary + '80');
+                    barGradient.addColorStop(1, colorTheme.secondary);
+                } else {
+                    barGradient.addColorStop(0, colorTheme.accent + '80');
+                    barGradient.addColorStop(1, colorTheme.accent);
+                }
+                
+                canvasCtx.fillStyle = barGradient;
+                canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                x += barWidth + barSpacing;
             }
-        } else if (visualizerType === "circular") {
+        }
+
+        if (visualizerConfig.circular) {
             analyser.getByteFrequencyData(dataArray);
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
             const imageRadius = 100;
 
-            const radius = imageRadius + 20;
-            const bars = bufferLength * 0.7;
+            // Adjusted radius to fit screen
+            const maxRadius = Math.min(canvas.width, canvas.height) * 0.3;
+            const radius = Math.min(imageRadius + 50, maxRadius);
+            const bars = bufferLength * 0.8;
 
             for (let i = 0; i < bars; i++) {
-                const barHeight = dataArray[i] * 0.5;
+                // Better sensitivity for circular
+                const rawValue = dataArray[i];
+                const threshold = 15; // Minimum threshold
+                const scaledValue = rawValue > threshold ? (rawValue - threshold) * 0.8 : 0;
+                const maxBarHeight = Math.min(canvas.width, canvas.height) * 0.12;
+                const barHeight = Math.min(scaledValue, maxBarHeight);
                 if (barHeight < 1) continue;
 
                 const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
-                const hue = (i / bars) * 360;
-                canvasCtx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
-                canvasCtx.lineWidth = 3;
+                const progress = i / bars;
+                
+                // Create gradient for circular bars using theme colors
+                let barColor;
+                if (progress < 0.33) {
+                    barColor = colorTheme.primary;
+                } else if (progress < 0.66) {
+                    barColor = colorTheme.secondary;
+                } else {
+                    barColor = colorTheme.accent;
+                }
+                
+                const circularGradient = canvasCtx.createLinearGradient(
+                    centerX + radius * Math.cos(angle), 
+                    centerY + radius * Math.sin(angle),
+                    centerX + (radius + barHeight) * Math.cos(angle), 
+                    centerY + (radius + barHeight) * Math.sin(angle)
+                );
+                circularGradient.addColorStop(0, barColor + '60');
+                circularGradient.addColorStop(1, barColor);
+                
+                canvasCtx.strokeStyle = circularGradient;
+                canvasCtx.lineWidth = 5;
 
                 const startX = centerX + radius * Math.cos(angle);
                 const startY = centerY + radius * Math.sin(angle);
@@ -175,194 +278,368 @@ export default function Index() {
                 canvasCtx.lineTo(endX, endY);
                 canvasCtx.stroke();
             }
-        } else if (visualizerType === "solar_system") {
+        }
+
+        if (visualizerConfig.solar_system) {
             analyser.getByteFrequencyData(dataArray);
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
             
-            // Calculate overall audio intensity for global effects
+            // Calculate overall audio intensity for general effects
             const totalIntensity = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
             const intensityFactor = totalIntensity / 255;
 
-            // Draw center "sun" with pulsing effect
-            const sunRadius = 40 + intensityFactor * 30;
-            const sunGradient = canvasCtx.createRadialGradient(centerX, centerY, 0, centerX, centerY, sunRadius);
-            sunGradient.addColorStop(0, `hsla(45, 100%, ${70 + intensityFactor * 30}%, 1)`);
-            sunGradient.addColorStop(0.7, `hsla(25, 100%, ${50 + intensityFactor * 20}%, 0.8)`);
-            sunGradient.addColorStop(1, `hsla(15, 100%, ${30 + intensityFactor * 10}%, 0.2)`);
-            
-            canvasCtx.fillStyle = sunGradient;
-            canvasCtx.beginPath();
-            canvasCtx.arc(centerX, centerY, sunRadius, 0, Math.PI * 2);
-            canvasCtx.fill();
-
-            // Define orbital parameters for different "planets"
+            // Define orbital parameters with different rotation speeds
             const orbits = [
-                { radius: 120, speed: 0.8, planetCount: 8, size: 6, hueBase: 60 },
-                { radius: 160, speed: 0.6, planetCount: 12, size: 5, hueBase: 120 },
-                { radius: 200, speed: 0.4, planetCount: 16, size: 4, hueBase: 180 },
-                { radius: 240, speed: 0.3, planetCount: 20, size: 3.5, hueBase: 240 },
-                { radius: 280, speed: 0.2, planetCount: 24, size: 3, hueBase: 300 }
+                { radius: 120, speed: 0.3, planetCount: 6, size: 4 },
+                { radius: 180, speed: -0.2, planetCount: 8, size: 3.5 },
+                { radius: 240, speed: 0.15, planetCount: 10, size: 3 },
+                { radius: 300, speed: -0.1, planetCount: 12, size: 2.5 }
             ];
 
-            // Draw orbital paths (faint circles)
-            canvasCtx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+            // Draw orbital paths - waveform-like jagged distortion based on audio data
+            canvasCtx.strokeStyle = "rgba(200, 200, 200, 0.2)";
             canvasCtx.lineWidth = 1;
-            orbits.forEach(orbit => {
-                const dynamicRadius = orbit.radius + intensityFactor * 20;
+            orbits.forEach((orbit, orbitIndex) => {
                 canvasCtx.beginPath();
-                canvasCtx.arc(centerX, centerY, dynamicRadius, 0, Math.PI * 2);
+                let isFirstPoint = true;
+                const segmentCount = 64; // Number of segments around the circle
+                
+                for (let i = 0; i <= segmentCount; i++) {
+                    const angle = (i / segmentCount) * Math.PI * 2;
+                    
+                    // Calculate which audio data point corresponds to this angle
+                    const dataIndex = Math.floor((i / segmentCount) * bufferLength);
+                    const audioValue = dataArray[dataIndex] || 0;
+                    
+                    // Apply threshold and scaling for better sensitivity
+                    const threshold = 20;
+                    const scaledAudio = audioValue > threshold ? (audioValue - threshold) * 0.3 : 0;
+                    
+                    // Create jagged distortion only where there's significant audio
+                    let dynamicRadius = orbit.radius;
+                    if (scaledAudio > 5) {
+                        // Jagged distortion based on specific audio data at this position
+                        const distortion = (scaledAudio - 5) * 0.8;
+                        dynamicRadius = orbit.radius + distortion;
+                    }
+                    
+                    const x = centerX + dynamicRadius * Math.cos(angle);
+                    const y = centerY + dynamicRadius * Math.sin(angle);
+                    
+                    if (isFirstPoint) {
+                        canvasCtx.moveTo(x, y);
+                        isFirstPoint = false;
+                    } else {
+                        canvasCtx.lineTo(x, y);
+                    }
+                }
+                canvasCtx.closePath();
                 canvasCtx.stroke();
             });
 
-            // Draw planets on each orbit
+            // Draw planets on each orbit with independent rotation
             orbits.forEach((orbit, orbitIndex) => {
-                const dynamicRadius = orbit.radius + intensityFactor * 20;
-                const dynamicSpeed = orbit.speed * (1 + intensityFactor * 2);
-                
                 for (let i = 0; i < orbit.planetCount; i++) {
-                    // Calculate audio data index for this planet
-                    const dataIndex = Math.floor((i / orbit.planetCount) * bufferLength);
-                    const audioValue = dataArray[dataIndex] || 0;
-                    const normalizedAudio = audioValue / 255;
-
-                    // Calculate planet position
+                    // Independent rotation for each orbit
                     const baseAngle = (i / orbit.planetCount) * Math.PI * 2;
-                    const rotationAngle = animationTimeRef.current * dynamicSpeed;
+                    const rotationAngle = animationTimeRef.current * orbit.speed;
                     const totalAngle = baseAngle + rotationAngle;
+                    
+                    // Calculate radius with position-specific audio data
+                    const segmentPosition = (totalAngle % (Math.PI * 2)) / (Math.PI * 2);
+                    const dataIndex = Math.floor(segmentPosition * bufferLength);
+                    const audioValue = dataArray[dataIndex] || 0;
+                    
+                    // Apply threshold and scaling
+                    const threshold = 20;
+                    const scaledAudio = audioValue > threshold ? (audioValue - threshold) * 0.3 : 0;
+                    
+                    let dynamicRadius = orbit.radius;
+                    if (scaledAudio > 5) {
+                        const distortion = (scaledAudio - 5) * 0.8;
+                        dynamicRadius = orbit.radius + distortion;
+                    }
                     
                     const planetX = centerX + dynamicRadius * Math.cos(totalAngle);
                     const planetY = centerY + dynamicRadius * Math.sin(totalAngle);
 
-                    // Planet size affected by audio
-                    const planetSize = orbit.size * (1 + normalizedAudio * 2);
-                    
-                    // Planet color with audio-reactive hue and brightness
-                    const hue = (orbit.hueBase + (i / orbit.planetCount) * 60) % 360;
-                    const brightness = 40 + normalizedAudio * 60;
-                    const saturation = 70 + normalizedAudio * 30;
-                    
-                    // Draw planet with glow effect for high audio values
-                    if (normalizedAudio > 0.3) {
-                        // Glow effect
-                        const glowRadius = planetSize * 3;
-                        const glowGradient = canvasCtx.createRadialGradient(
-                            planetX, planetY, 0, 
-                            planetX, planetY, glowRadius
-                        );
-                        glowGradient.addColorStop(0, `hsla(${hue}, ${saturation}%, ${brightness}%, 0.8)`);
-                        glowGradient.addColorStop(1, `hsla(${hue}, ${saturation}%, ${brightness}%, 0)`);
-                        
-                        canvasCtx.fillStyle = glowGradient;
-                        canvasCtx.beginPath();
-                        canvasCtx.arc(planetX, planetY, glowRadius, 0, Math.PI * 2);
-                        canvasCtx.fill();
-                    }
+                    // Calculate audio data index for this planet
+                    const planetDataIndex = Math.floor((i / orbit.planetCount) * bufferLength);
+                    const planetAudioValue = dataArray[planetDataIndex] || 0;
+                    const normalizedAudio = Math.max(0, (planetAudioValue - 20) / 235); // Better normalization
 
-                    // Draw main planet
-                    canvasCtx.fillStyle = `hsl(${hue}, ${saturation}%, ${brightness}%)`;
+                    // Planet size - more sensitive variation
+                    const planetSize = orbit.size * (1 + normalizedAudio * 0.4);
+                    
+                    // Subtle planet colors using theme
+                    const themeColors = [colorTheme.primary, colorTheme.secondary, colorTheme.accent];
+                    const baseColor = themeColors[orbitIndex % themeColors.length];
+                    
+                    // Parse hex color to extract RGB values
+                    const r = parseInt(baseColor.slice(1, 3), 16);
+                    const g = parseInt(baseColor.slice(3, 5), 16);
+                    const b = parseInt(baseColor.slice(5, 7), 16);
+                    
+                    // Create planet color with better sensitivity
+                    const opacity = 0.5 + normalizedAudio * 0.4;
+                    canvasCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+                    
                     canvasCtx.beginPath();
                     canvasCtx.arc(planetX, planetY, planetSize, 0, Math.PI * 2);
                     canvasCtx.fill();
 
-                    // Draw trail effect for active planets
+                    // More sensitive trail effect
                     if (normalizedAudio > 0.2) {
-                        const trailLength = 10;
-                        canvasCtx.strokeStyle = `hsla(${hue}, ${saturation}%, ${brightness}%, 0.3)`;
-                        canvasCtx.lineWidth = 2;
-                        canvasCtx.beginPath();
-                        
+                        const trailLength = 6;
                         for (let t = 1; t <= trailLength; t++) {
-                            const trailAngle = totalAngle - (t * 0.1 * dynamicSpeed);
-                            const trailX = centerX + dynamicRadius * Math.cos(trailAngle);
-                            const trailY = centerY + dynamicRadius * Math.sin(trailAngle);
+                            const trailAngle = totalAngle - (t * 0.03);
                             
-                            if (t === 1) canvasCtx.moveTo(trailX, trailY);
-                            else canvasCtx.lineTo(trailX, trailY);
+                            // Calculate trail radius with position-specific audio
+                            const trailSegmentPosition = (trailAngle % (Math.PI * 2)) / (Math.PI * 2);
+                            const trailDataIndex = Math.floor(trailSegmentPosition * bufferLength);
+                            const trailAudioValue = dataArray[trailDataIndex] || 0;
+                            const trailScaledAudio = trailAudioValue > threshold ? (trailAudioValue - threshold) * 0.3 : 0;
+                            
+                            let trailRadius = orbit.radius;
+                            if (trailScaledAudio > 5) {
+                                const trailDistortion = (trailScaledAudio - 5) * 0.8;
+                                trailRadius = orbit.radius + trailDistortion;
+                            }
+                            
+                            const trailX = centerX + trailRadius * Math.cos(trailAngle);
+                            const trailY = centerY + trailRadius * Math.sin(trailAngle);
+                            const trailOpacity = (1 - t / trailLength) * normalizedAudio * 0.3;
+                            const trailSize = planetSize * (1 - t / trailLength) * 0.4;
+                            
+                            canvasCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${trailOpacity})`;
+                            canvasCtx.beginPath();
+                            canvasCtx.arc(trailX, trailY, trailSize, 0, Math.PI * 2);
+                            canvasCtx.fill();
                         }
-                        canvasCtx.stroke();
                     }
                 }
             });
+        }
+    } else {
+        // Continue solar system animation even without audio - PERFECT CIRCLES
+        if (visualizerConfig.solar_system) {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
 
-            // Draw connecting lines between orbits for dramatic effect during high intensity
-            if (intensityFactor > 0.6) {
-                canvasCtx.strokeStyle = `rgba(255, 255, 255, ${(intensityFactor - 0.6) * 0.5})`;
-                canvasCtx.lineWidth = 1;
-                
-                for (let i = 0; i < 6; i++) {
-                    const angle = (i / 6) * Math.PI * 2 + animationTimeRef.current * 0.5;
+            // Define orbital parameters with different rotation speeds
+            const orbits = [
+                { radius: 120, speed: 0.3, planetCount: 6, size: 4 },
+                { radius: 180, speed: -0.2, planetCount: 8, size: 3.5 },
+                { radius: 240, speed: 0.15, planetCount: 10, size: 3 },
+                { radius: 300, speed: -0.1, planetCount: 12, size: 2.5 }
+            ];
+
+            // Draw perfect circular orbital paths
+            canvasCtx.strokeStyle = "rgba(200, 200, 200, 0.2)";
+            canvasCtx.lineWidth = 1;
+            orbits.forEach(orbit => {
+                canvasCtx.beginPath();
+                canvasCtx.arc(centerX, centerY, orbit.radius, 0, Math.PI * 2);
+                canvasCtx.stroke();
+            });
+
+            // Draw planets on each orbit with independent rotation - PERFECT CIRCLES
+            orbits.forEach((orbit, orbitIndex) => {
+                for (let i = 0; i < orbit.planetCount; i++) {
+                    // Independent rotation for each orbit
+                    const baseAngle = (i / orbit.planetCount) * Math.PI * 2;
+                    const rotationAngle = animationTimeRef.current * orbit.speed;
+                    const totalAngle = baseAngle + rotationAngle;
+                    
+                    // Perfect circular radius
+                    const planetX = centerX + orbit.radius * Math.cos(totalAngle);
+                    const planetY = centerY + orbit.radius * Math.sin(totalAngle);
+
+                    // Planet size
+                    const planetSize = orbit.size;
+                    
+                    // Planet colors using theme
+                    const themeColors = [colorTheme.primary, colorTheme.secondary, colorTheme.accent];
+                    const baseColor = themeColors[orbitIndex % themeColors.length];
+                    
+                    // Parse hex color to extract RGB values
+                    const r = parseInt(baseColor.slice(1, 3), 16);
+                    const g = parseInt(baseColor.slice(3, 5), 16);
+                    const b = parseInt(baseColor.slice(5, 7), 16);
+                    
+                    // Create planet color
+                    canvasCtx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.7)`;
+                    
                     canvasCtx.beginPath();
-                    canvasCtx.moveTo(centerX + 80 * Math.cos(angle), centerY + 80 * Math.sin(angle));
-                    canvasCtx.lineTo(centerX + 300 * Math.cos(angle), centerY + 300 * Math.sin(angle));
-                    canvasCtx.stroke();
+                    canvasCtx.arc(planetX, planetY, planetSize, 0, Math.PI * 2);
+                    canvasCtx.fill();
                 }
-            }
+            });
         }
     }
 
-    // Draw center image last, on top of the visualizer
-    if (centerImage && imageRef.current?.complete && visualizerType !== "solar_system") {
+    // Draw center image ALWAYS on top (moved to end)
+    if (centerImage && imageRef.current?.complete) {
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         const imageRadius = 100;
+        
+        // Add glow around center image using theme color
+        canvasCtx.shadowColor = colorTheme.primary;
+        canvasCtx.shadowBlur = 20;
+        
         canvasCtx.save();
         canvasCtx.beginPath();
         canvasCtx.arc(centerX, centerY, imageRadius, 0, Math.PI * 2, false);
         canvasCtx.clip();
         canvasCtx.drawImage(imageRef.current, centerX - imageRadius, centerY - imageRadius, imageRadius * 2, imageRadius * 2);
         canvasCtx.restore();
+        
+        // Reset shadow
+        canvasCtx.shadowBlur = 0;
     }
 
     requestAnimationFrame(visualize);
   };
 
   return (
-    <div className="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-4 font-sans">
-      <div className="w-full max-w-5xl flex flex-col items-center">
-        <h1 className="text-5xl font-bold text-center mb-6 tracking-wider">Creative Audio Visualizer</h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 text-slate-800 flex flex-col items-center justify-center p-4 font-sans">
+      <div className="w-full max-w-6xl flex flex-col items-center">
+        <div className="text-center mb-8">
+          <h1 className="text-6xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2 tracking-wider drop-shadow-sm">
+            Creative Audio Visualizer
+          </h1>
+          <p className="text-lg text-slate-600 font-medium">Experience music like never before</p>
+        </div>
         
-        <div className="bg-gray-800/50 backdrop-blur-sm p-4 rounded-xl shadow-2xl mb-6 border border-gray-700/50">
-          <canvas ref={canvasRef} width="1024" height="500" className="w-full rounded-lg"></canvas>
+        <div className="bg-white/60 backdrop-blur-lg p-6 rounded-2xl shadow-2xl mb-8 border border-white/30 ring-1 ring-slate-200/50">
+          <canvas ref={canvasRef} width="1024" height="500" className="w-full rounded-xl shadow-inner"></canvas>
         </div>
 
-        <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-xl shadow-2xl w-full border border-gray-700/50">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex flex-col sm:flex-row items-center gap-4">
+        <div className="bg-white/70 backdrop-blur-lg p-8 rounded-2xl shadow-2xl w-full border border-white/30 ring-1 ring-slate-200/50">
+          <div className="flex flex-col lg:flex-row items-start justify-between gap-8">
+            
+            {/* File Upload Section */}
+            <div className="flex flex-col sm:flex-row items-start gap-6">
               <div className="flex flex-col">
-                <label htmlFor="audioFile" className="text-sm mb-1 text-gray-400">Audio</label>
-                <input id="audioFile" type="file" accept="audio/*" onChange={handleFileChange} className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100 transition"/>
+                <label htmlFor="audioFile" className="text-sm font-semibold mb-2 text-slate-700">🎵 Audio File</label>
+                <input 
+                  id="audioFile" 
+                  type="file" 
+                  accept="audio/*" 
+                  onChange={handleFileChange} 
+                  className="file:mr-4 file:py-3 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gradient-to-r file:from-indigo-500 file:to-purple-600 file:text-white hover:file:from-indigo-600 hover:file:to-purple-700 file:transition-all file:shadow-lg cursor-pointer"
+                />
               </div>
               <div className="flex flex-col">
-                <label htmlFor="imageFile" className="text-sm mb-1 text-gray-400">Center Image</label>
-                <input id="imageFile" type="file" accept="image/*" onChange={handleImageChange} className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 transition"/>
+                <label htmlFor="imageFile" className="text-sm font-semibold mb-2 text-slate-700">🖼️ Center Image</label>
+                <input 
+                  id="imageFile" 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleImageChange} 
+                  className="file:mr-4 file:py-3 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gradient-to-r file:from-pink-500 file:to-rose-600 file:text-white hover:file:from-pink-600 hover:file:to-rose-700 file:transition-all file:shadow-lg cursor-pointer"
+                />
               </div>
               <audio ref={audioRef} onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)}></audio>
             </div>
             
-            <div className="flex items-center gap-4">
-              <button onClick={togglePlay} className="bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 px-6 rounded-full text-lg transition transform hover:scale-105 shadow-lg disabled:bg-gray-500 disabled:cursor-not-allowed" disabled={!audioFile}>
-                {isPlaying ? "Pause" : "Play"}
-              </button>
+            {/* Controls Section */}
+            <div className="flex flex-col gap-6 min-w-0 flex-1">
               
-              <div className="flex items-center gap-2">
-                <label htmlFor="visualizerType" className="text-sm font-medium">Type</label>
-                <select id="visualizerType" value={visualizerType} onChange={(e) => setVisualizerType(e.target.value)} className="bg-gray-700 text-white rounded-md p-2 border-2 border-gray-600 focus:outline-none focus:border-violet-500 transition">
-                  <option value="circular">Circular</option>
-                  <option value="waveform">Waveform</option>
-                  <option value="frequency">Frequency Bars</option>
-                  <option value="solar_system">Solar System</option>
-                </select>
+              {/* Play Button */}
+              <div className="flex items-center justify-center lg:justify-end">
+                <button 
+                  onClick={togglePlay} 
+                  className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-full text-lg transition-all transform hover:scale-105 shadow-lg disabled:from-slate-400 disabled:to-slate-500 disabled:cursor-not-allowed disabled:transform-none flex items-center gap-3" 
+                  disabled={!audioFile}
+                >
+                  <span className="text-xl">{isPlaying ? "⏸️" : "▶️"}</span>
+                  {isPlaying ? "Pause" : "Play"}
+                </button>
               </div>
 
-              {visualizerType !== 'circular' && visualizerType !== 'solar_system' && (
-                <div className="flex items-center gap-2">
-                  <label htmlFor="color" className="text-sm font-medium">Color</label>
-                  <input type="color" id="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-10 h-10 rounded-md bg-gray-700 border-2 border-gray-600 cursor-pointer"/>
+              {/* Visualizer Selection */}
+              <div className="bg-slate-50/50 p-6 rounded-xl border border-slate-200/50">
+                <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                  <span>🎨</span> Visualizer Modes
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {Object.entries(visualizerConfig).map(([type, enabled]) => (
+                    <label 
+                      key={type} 
+                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/50 transition-colors cursor-pointer group"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={enabled}
+                        onChange={() => toggleVisualizerType(type as keyof VisualizerConfig)}
+                        className="w-5 h-5 text-indigo-600 bg-white border-2 border-slate-300 rounded focus:ring-indigo-500 focus:ring-2"
+                      />
+                      <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 capitalize">
+                        {type === "solar_system" ? "Solar System" : type}
+                      </span>
+                    </label>
+                  ))}
                 </div>
-              )}
+              </div>
+
+              {/* Color Theme Customization */}
+              <div className="bg-slate-50/50 p-6 rounded-xl border border-slate-200/50">
+                <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                  <span>🌈</span> Color Theme
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="flex flex-col items-center gap-2">
+                    <label className="text-sm font-medium text-slate-600">Primary</label>
+                    <input 
+                      type="color" 
+                      value={colorTheme.primary} 
+                      onChange={(e) => updateColorTheme('primary', e.target.value)} 
+                      className="w-12 h-12 rounded-lg border-4 border-white shadow-lg cursor-pointer hover:scale-105 transition-transform"
+                    />
+                    <span className="text-xs text-slate-500">{colorTheme.primary}</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    <label className="text-sm font-medium text-slate-600">Secondary</label>
+                    <input 
+                      type="color" 
+                      value={colorTheme.secondary} 
+                      onChange={(e) => updateColorTheme('secondary', e.target.value)} 
+                      className="w-12 h-12 rounded-lg border-4 border-white shadow-lg cursor-pointer hover:scale-105 transition-transform"
+                    />
+                    <span className="text-xs text-slate-500">{colorTheme.secondary}</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    <label className="text-sm font-medium text-slate-600">Accent</label>
+                    <input 
+                      type="color" 
+                      value={colorTheme.accent} 
+                      onChange={(e) => updateColorTheme('accent', e.target.value)} 
+                      className="w-12 h-12 rounded-lg border-4 border-white shadow-lg cursor-pointer hover:scale-105 transition-transform"
+                    />
+                    <span className="text-xs text-slate-500">{colorTheme.accent}</span>
+                  </div>
+                </div>
+                <div className="mt-4 flex justify-center">
+                  <button 
+                    onClick={() => setColorTheme({primary: "#6366f1", secondary: "#8b5cf6", accent: "#ec4899"})}
+                    className="text-sm px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg transition-colors text-slate-700"
+                  >
+                    Reset to Default
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
+        
+        {/* Footer */}
+        <div className="mt-8 text-center">
+          <p className="text-sm text-slate-500 font-medium">
+            🎵 Select multiple visualizers and customize colors for unique combinations
+          </p>
         </div>
       </div>
     </div>
