@@ -1,4 +1,3 @@
-
 import type { MetaFunction } from "@remix-run/node";
 import { useEffect, useRef, useState } from "react";
 
@@ -22,6 +21,9 @@ export default function Index() {
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
+  
+  // Solar system animation state
+  const animationTimeRef = useRef<number>(0);
 
   // Initialize Image object only on the client
   useEffect(() => {
@@ -108,6 +110,9 @@ export default function Index() {
         return;
     }
 
+    // Update animation time
+    animationTimeRef.current += 0.02;
+
     canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
     canvasCtx.fillStyle = "#000";
     canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
@@ -170,11 +175,134 @@ export default function Index() {
                 canvasCtx.lineTo(endX, endY);
                 canvasCtx.stroke();
             }
+        } else if (visualizerType === "solar_system") {
+            analyser.getByteFrequencyData(dataArray);
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            // Calculate overall audio intensity for global effects
+            const totalIntensity = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
+            const intensityFactor = totalIntensity / 255;
+
+            // Draw center "sun" with pulsing effect
+            const sunRadius = 40 + intensityFactor * 30;
+            const sunGradient = canvasCtx.createRadialGradient(centerX, centerY, 0, centerX, centerY, sunRadius);
+            sunGradient.addColorStop(0, `hsla(45, 100%, ${70 + intensityFactor * 30}%, 1)`);
+            sunGradient.addColorStop(0.7, `hsla(25, 100%, ${50 + intensityFactor * 20}%, 0.8)`);
+            sunGradient.addColorStop(1, `hsla(15, 100%, ${30 + intensityFactor * 10}%, 0.2)`);
+            
+            canvasCtx.fillStyle = sunGradient;
+            canvasCtx.beginPath();
+            canvasCtx.arc(centerX, centerY, sunRadius, 0, Math.PI * 2);
+            canvasCtx.fill();
+
+            // Define orbital parameters for different "planets"
+            const orbits = [
+                { radius: 120, speed: 0.8, planetCount: 8, size: 6, hueBase: 60 },
+                { radius: 160, speed: 0.6, planetCount: 12, size: 5, hueBase: 120 },
+                { radius: 200, speed: 0.4, planetCount: 16, size: 4, hueBase: 180 },
+                { radius: 240, speed: 0.3, planetCount: 20, size: 3.5, hueBase: 240 },
+                { radius: 280, speed: 0.2, planetCount: 24, size: 3, hueBase: 300 }
+            ];
+
+            // Draw orbital paths (faint circles)
+            canvasCtx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+            canvasCtx.lineWidth = 1;
+            orbits.forEach(orbit => {
+                const dynamicRadius = orbit.radius + intensityFactor * 20;
+                canvasCtx.beginPath();
+                canvasCtx.arc(centerX, centerY, dynamicRadius, 0, Math.PI * 2);
+                canvasCtx.stroke();
+            });
+
+            // Draw planets on each orbit
+            orbits.forEach((orbit, orbitIndex) => {
+                const dynamicRadius = orbit.radius + intensityFactor * 20;
+                const dynamicSpeed = orbit.speed * (1 + intensityFactor * 2);
+                
+                for (let i = 0; i < orbit.planetCount; i++) {
+                    // Calculate audio data index for this planet
+                    const dataIndex = Math.floor((i / orbit.planetCount) * bufferLength);
+                    const audioValue = dataArray[dataIndex] || 0;
+                    const normalizedAudio = audioValue / 255;
+
+                    // Calculate planet position
+                    const baseAngle = (i / orbit.planetCount) * Math.PI * 2;
+                    const rotationAngle = animationTimeRef.current * dynamicSpeed;
+                    const totalAngle = baseAngle + rotationAngle;
+                    
+                    const planetX = centerX + dynamicRadius * Math.cos(totalAngle);
+                    const planetY = centerY + dynamicRadius * Math.sin(totalAngle);
+
+                    // Planet size affected by audio
+                    const planetSize = orbit.size * (1 + normalizedAudio * 2);
+                    
+                    // Planet color with audio-reactive hue and brightness
+                    const hue = (orbit.hueBase + (i / orbit.planetCount) * 60) % 360;
+                    const brightness = 40 + normalizedAudio * 60;
+                    const saturation = 70 + normalizedAudio * 30;
+                    
+                    // Draw planet with glow effect for high audio values
+                    if (normalizedAudio > 0.3) {
+                        // Glow effect
+                        const glowRadius = planetSize * 3;
+                        const glowGradient = canvasCtx.createRadialGradient(
+                            planetX, planetY, 0, 
+                            planetX, planetY, glowRadius
+                        );
+                        glowGradient.addColorStop(0, `hsla(${hue}, ${saturation}%, ${brightness}%, 0.8)`);
+                        glowGradient.addColorStop(1, `hsla(${hue}, ${saturation}%, ${brightness}%, 0)`);
+                        
+                        canvasCtx.fillStyle = glowGradient;
+                        canvasCtx.beginPath();
+                        canvasCtx.arc(planetX, planetY, glowRadius, 0, Math.PI * 2);
+                        canvasCtx.fill();
+                    }
+
+                    // Draw main planet
+                    canvasCtx.fillStyle = `hsl(${hue}, ${saturation}%, ${brightness}%)`;
+                    canvasCtx.beginPath();
+                    canvasCtx.arc(planetX, planetY, planetSize, 0, Math.PI * 2);
+                    canvasCtx.fill();
+
+                    // Draw trail effect for active planets
+                    if (normalizedAudio > 0.2) {
+                        const trailLength = 10;
+                        canvasCtx.strokeStyle = `hsla(${hue}, ${saturation}%, ${brightness}%, 0.3)`;
+                        canvasCtx.lineWidth = 2;
+                        canvasCtx.beginPath();
+                        
+                        for (let t = 1; t <= trailLength; t++) {
+                            const trailAngle = totalAngle - (t * 0.1 * dynamicSpeed);
+                            const trailX = centerX + dynamicRadius * Math.cos(trailAngle);
+                            const trailY = centerY + dynamicRadius * Math.sin(trailAngle);
+                            
+                            if (t === 1) canvasCtx.moveTo(trailX, trailY);
+                            else canvasCtx.lineTo(trailX, trailY);
+                        }
+                        canvasCtx.stroke();
+                    }
+                }
+            });
+
+            // Draw connecting lines between orbits for dramatic effect during high intensity
+            if (intensityFactor > 0.6) {
+                canvasCtx.strokeStyle = `rgba(255, 255, 255, ${(intensityFactor - 0.6) * 0.5})`;
+                canvasCtx.lineWidth = 1;
+                
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i / 6) * Math.PI * 2 + animationTimeRef.current * 0.5;
+                    canvasCtx.beginPath();
+                    canvasCtx.moveTo(centerX + 80 * Math.cos(angle), centerY + 80 * Math.sin(angle));
+                    canvasCtx.lineTo(centerX + 300 * Math.cos(angle), centerY + 300 * Math.sin(angle));
+                    canvasCtx.stroke();
+                }
+            }
         }
     }
 
     // Draw center image last, on top of the visualizer
-    if (centerImage && imageRef.current?.complete) {
+    if (centerImage && imageRef.current?.complete && visualizerType !== "solar_system") {
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         const imageRadius = 100;
@@ -223,10 +351,11 @@ export default function Index() {
                   <option value="circular">Circular</option>
                   <option value="waveform">Waveform</option>
                   <option value="frequency">Frequency Bars</option>
+                  <option value="solar_system">Solar System</option>
                 </select>
               </div>
 
-              {visualizerType !== 'circular' && (
+              {visualizerType !== 'circular' && visualizerType !== 'solar_system' && (
                 <div className="flex items-center gap-2">
                   <label htmlFor="color" className="text-sm font-medium">Color</label>
                   <input type="color" id="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-10 h-10 rounded-md bg-gray-700 border-2 border-gray-600 cursor-pointer"/>
