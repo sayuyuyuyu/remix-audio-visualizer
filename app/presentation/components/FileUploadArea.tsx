@@ -62,9 +62,10 @@ export function FileUploadArea({
       variant="outline"
       className={cn(
         'relative transition-all duration-200 cursor-pointer group',
-        'hover:border-indigo-300 hover:bg-indigo-50/30',
-        (isDragging || dragActive) && 'border-indigo-400 bg-indigo-50/50 scale-[1.02]',
+        'hover:border-indigo-300 hover:bg-indigo-50/30 hover:shadow-lg',
+        (isDragging || dragActive) && 'border-indigo-400 bg-indigo-50/50 scale-[1.02] shadow-xl',
         isUploading && 'pointer-events-none',
+        'bg-white/50 backdrop-blur-sm',
         className
       )}
       {...dragProps}
@@ -116,22 +117,22 @@ export function FileUploadArea({
       )}
 
       {/* メインコンテンツ */}
-      <div className="text-center space-y-4">
+      <div className="text-center space-y-4 p-4">
         <div className="text-6xl">{config.icon}</div>
 
         <div className="space-y-2">
           <h3 className="text-lg font-bold text-slate-800 group-hover:text-indigo-700 transition-colors">
             {config.title}
           </h3>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-slate-600 leading-relaxed px-2">
             {config.description}
           </p>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           <Button
             variant="outline"
-            className="relative overflow-hidden"
+            className="relative overflow-hidden hover:bg-indigo-50 transition-colors"
             disabled={isUploading}
           >
             {config.buttonText}
@@ -144,7 +145,7 @@ export function FileUploadArea({
             />
           </Button>
 
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 font-medium">
             または、ここにファイルをドラッグアンドドロップ
           </p>
         </div>

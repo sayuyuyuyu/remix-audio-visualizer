@@ -50,7 +50,7 @@ export function AudioControls({
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <Card variant="glass" className={cn('space-y-6', className)}>
+    <Card variant="glass" className={cn('space-y-6 p-6', className)}>
       {/* メインコントロール */}
       <div className="flex items-center justify-center gap-4">
         <Button
@@ -58,7 +58,7 @@ export function AudioControls({
           size="lg"
           onClick={onStop}
           disabled={!canPlay || isLoading}
-          className="w-12 h-12 p-0"
+          className="w-12 h-12 p-0 hover:bg-slate-100 transition-colors"
         >
           <span className="text-lg">⏹️</span>
         </Button>
@@ -69,7 +69,7 @@ export function AudioControls({
           onClick={isPlaying ? onPause : onPlay}
           disabled={!canPlay}
           isLoading={isLoading}
-          className="w-16 h-16 p-0 text-2xl"
+          className="w-16 h-16 p-0 text-2xl shadow-lg hover:shadow-xl transition-all duration-200"
         >
           {!isLoading && (
             <span>{isPlaying ? '⏸️' : '▶️'}</span>
@@ -79,7 +79,7 @@ export function AudioControls({
 
       {/* 時間表示とシークバー */}
       {canPlay && duration > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <div className="flex justify-between text-sm text-slate-600 font-medium">
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(duration)}</span>
@@ -93,7 +93,7 @@ export function AudioControls({
               value={progress}
               onChange={handleSeek}
               className={cn(
-                'w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer',
+                'w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer',
                 'focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
                 'slider-thumb'
               )}
@@ -119,7 +119,7 @@ export function AudioControls({
             value={volume * 100}
             onChange={handleVolumeChange}
             className={cn(
-              'w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer',
+              'w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer',
               'focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
             )}
             style={{
