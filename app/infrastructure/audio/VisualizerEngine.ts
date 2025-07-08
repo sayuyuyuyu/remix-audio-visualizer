@@ -466,7 +466,7 @@ export class VisualizerEngine {
 
   render(
     enabledModes: VisualizerMode[],
-    audioData: AudioAnalysisData,
+    audioData: AudioAnalysisData | null,
     options: VisualizerOptions
   ): void {
     if (!this.ctx || !this.canvas) return;
@@ -475,12 +475,14 @@ export class VisualizerEngine {
     this.clearCanvas(options);
 
     // 有効なビジュアライザーをレンダリング
-    enabledModes.forEach(mode => {
-      const visualizer = this.visualizers.get(mode.id);
-      if (visualizer) {
-        visualizer.render(audioData, options);
-      }
-    });
+    if (audioData) {
+      enabledModes.forEach(mode => {
+        const visualizer = this.visualizers.get(mode.id);
+        if (visualizer) {
+          visualizer.render(audioData, options);
+        }
+      });
+    }
 
     // センター画像の描画
     if (options.centerImage) {

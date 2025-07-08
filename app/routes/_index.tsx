@@ -1,25 +1,31 @@
 import type { MetaFunction } from "@remix-run/node";
-import { useCallback, useState } from 'react';
-import type { CenterImageEntity } from '../domain/entities/CenterImage';
-import { AudioControls } from '../presentation/components/AudioControls';
-import { FileUploadArea } from '../presentation/components/FileUploadArea';
-import { Button } from '../presentation/components/ui/Button';
-import { Card } from '../presentation/components/ui/Card';
-import { ToastContainer, useToast } from '../presentation/components/ui/Toast';
-import { VisualizerCanvas } from '../presentation/components/VisualizerCanvas';
-import { useAudio } from '../presentation/hooks/useAudio';
-import { useFileUpload } from '../presentation/hooks/useFileUpload';
-import { useVisualizer } from '../presentation/hooks/useVisualizer';
+import { useCallback, useState } from "react";
+import type { CenterImageEntity } from "../domain/entities/CenterImage";
+import { AudioControls } from "../presentation/components/AudioControls";
+import { FileUploadArea } from "../presentation/components/FileUploadArea";
+import { VisualizerCanvas } from "../presentation/components/VisualizerCanvas";
+import { Button } from "../presentation/components/ui/Button";
+import { Card } from "../presentation/components/ui/Card";
+import { ToastContainer, useToast } from "../presentation/components/ui/Toast";
+import { useAudio } from "../presentation/hooks/useAudio";
+import { useFileUpload } from "../presentation/hooks/useFileUpload";
+import { useVisualizer } from "../presentation/hooks/useVisualizer";
 
 export const meta: MetaFunction = () => {
   return [
     { title: "🎵 オーディオビジュアライザー | 音楽を視覚化する" },
-    { name: "description", content: "美しい音楽の視覚化体験。様々なビジュアライザーモードで音楽をお楽しみください。" },
+    {
+      name: "description",
+      content:
+        "美しい音楽の視覚化体験。様々なビジュアライザーモードで音楽をお楽しみください。",
+    },
   ];
 };
 
 export default function Index() {
-  const [centerImage, setCenterImage] = useState<CenterImageEntity | null>(null);
+  const [centerImage, setCenterImage] = useState<CenterImageEntity | null>(
+    null
+  );
   const { toasts, success, error: showError } = useToast();
 
   // カスタムフック
@@ -29,44 +35,60 @@ export default function Index() {
     uploadProgress: audioProgress,
     uploadAudioFile,
     uploadImageFile,
-    supportedFormats
+    supportedFormats,
   } = useFileUpload();
 
-  const visualizer = useVisualizer(audio.audioFile ? undefined : undefined); // TODO: audioRepositoryを渡す
+  // audioRepositoryを取得してビジュアライザーに渡す
+  const visualizer = useVisualizer(audio.audioRepository);
 
   // ファイルアップロードハンドラー
-  const handleAudioUpload = useCallback(async (file: File) => {
-    try {
-      const audioFile = await uploadAudioFile(file);
-      if (audioFile) {
-        await audio.setAudioFile(audioFile);
-        success(`${audioFile.name} をアップロードしました`);
+  const handleAudioUpload = useCallback(
+    async (file: File) => {
+      try {
+        const audioFile = await uploadAudioFile(file);
+        if (audioFile) {
+          await audio.setAudioFile(audioFile);
+          success(`${audioFile.name} をアップロードしました`);
+        }
+      } catch (err) {
+        showError(
+          err instanceof Error ? err.message : "アップロードに失敗しました"
+        );
       }
-    } catch (err) {
-      showError(err instanceof Error ? err.message : 'アップロードに失敗しました');
-    }
-  }, [uploadAudioFile, audio, success, showError]);
+    },
+    [uploadAudioFile, audio, success, showError]
+  );
 
-  const handleImageUpload = useCallback(async (file: File) => {
-    try {
-      const imageFile = await uploadImageFile(file);
-      if (imageFile) {
-        setCenterImage(imageFile);
-        success(`${imageFile.name} をセンター画像に設定しました`);
+  const handleImageUpload = useCallback(
+    async (file: File) => {
+      try {
+        const imageFile = await uploadImageFile(file);
+        if (imageFile) {
+          setCenterImage(imageFile);
+          success(`${imageFile.name} をセンター画像に設定しました`);
+        }
+      } catch (err) {
+        showError(
+          err instanceof Error ? err.message : "画像アップロードに失敗しました"
+        );
       }
-    } catch (err) {
-      showError(err instanceof Error ? err.message : '画像アップロードに失敗しました');
-    }
-  }, [uploadImageFile, success, showError]);
+    },
+    [uploadImageFile, success, showError]
+  );
 
   // ビジュアライザーモードの切り替えハンドラー
-  const handleModeToggle = useCallback((modeId: string) => {
-    visualizer.toggleMode(modeId);
-    const mode = visualizer.config.modes.find(m => m.id === modeId);
-    if (mode) {
-      success(`${mode.nameJa}モードを${mode.enabled ? '有効' : '無効'}にしました`);
-    }
-  }, [visualizer, success]);
+  const handleModeToggle = useCallback(
+    (modeId: string) => {
+      visualizer.toggleMode(modeId);
+      const mode = visualizer.config.modes.find((m) => m.id === modeId);
+      if (mode) {
+        success(
+          `${mode.nameJa}モードを${mode.enabled ? "有効" : "無効"}にしました`
+        );
+      }
+    },
+    [visualizer, success]
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -143,9 +165,7 @@ export default function Index() {
             {audio.audioFile && (
               <Card variant="outline" padding="sm">
                 <div className="text-center">
-                  <p className="text-sm font-medium text-slate-700">
-                    再生中
-                  </p>
+                  <p className="text-sm font-medium text-slate-700">再生中</p>
                   <p className="text-xs text-slate-500 truncate">
                     {audio.audioFile.name}
                   </p>
@@ -210,7 +230,9 @@ export default function Index() {
                   max="3.0"
                   step="0.1"
                   value={visualizer.config.sensitivity}
-                  onChange={(e) => visualizer.updateSensitivity(parseFloat(e.target.value))}
+                  onChange={(e) =>
+                    visualizer.updateSensitivity(parseFloat(e.target.value))
+                  }
                   className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
