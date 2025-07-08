@@ -39,7 +39,7 @@ export default function Index() {
   } = useFileUpload();
 
   // audioRepositoryを取得してビジュアライザーに渡す
-  const visualizer = useVisualizer(audio.audioRepository);
+  const visualizer = useVisualizer(audio.audioRepository ?? undefined);
 
   // ファイルアップロードハンドラー
   const handleAudioUpload = useCallback(
@@ -196,6 +196,7 @@ export default function Index() {
                       checked={mode.enabled}
                       onChange={() => handleModeToggle(mode.id)}
                       className="w-5 h-5 text-indigo-600 bg-white border-2 border-slate-300 rounded focus:ring-indigo-500 focus:ring-2"
+                      aria-label={`${mode.nameJa} モードを切り替え`}
                     />
                     <div className="flex items-center gap-2 flex-1">
                       <span className="text-lg">{mode.icon}</span>

@@ -18,7 +18,7 @@ export class WebAudioService {
       return;
     }
 
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    const AudioContext = window.AudioContext || (window as Window & { webkitAudioContext?: typeof window.AudioContext }).webkitAudioContext;
     this.audioContext = new AudioContext();
 
     // コンテキストが中断されている場合は再開

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { cn } from '../../../utils/cn';
 
 export interface ToastProps {
@@ -25,6 +25,13 @@ export function Toast({
     return () => clearTimeout(timer);
   }, []);
 
+  const handleClose = useCallback(() => {
+    setIsLeaving(true);
+    setTimeout(() => {
+      onClose?.(id);
+    }, 300);
+  }, [id, onClose]);
+
   useEffect(() => {
     if (duration > 0) {
       const timer = setTimeout(() => {
@@ -32,14 +39,7 @@ export function Toast({
       }, duration);
       return () => clearTimeout(timer);
     }
-  }, [duration]);
-
-  const handleClose = () => {
-    setIsLeaving(true);
-    setTimeout(() => {
-      onClose?.(id);
-    }, 300);
-  };
+  }, [duration, handleClose]);
 
   const variants = {
     success: {

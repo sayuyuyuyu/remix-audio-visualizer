@@ -96,11 +96,12 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
 
   // 感度の更新
   const updateSensitivity = useCallback((sensitivity: number) => {
-    setConfig(prevConfig => ({
-      ...prevConfig,
-      sensitivity: Math.max(0.1, Math.min(3.0, sensitivity)),
-      updatedAt: new Date()
-    }));
+    setConfig(prevConfig => {
+      const newConfig = Object.assign(Object.create(Object.getPrototypeOf(prevConfig)), prevConfig);
+      newConfig.sensitivity = Math.max(0.1, Math.min(3.0, sensitivity));
+      newConfig.updatedAt = new Date();
+      return newConfig;
+    });
   }, []);
 
   // FFTサイズの更新
@@ -108,11 +109,12 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
     const validSizes = [256, 512, 1024, 2048, 4096];
     const validFFTSize = validSizes.includes(fftSize) ? fftSize : 512;
 
-    setConfig(prevConfig => ({
-      ...prevConfig,
-      fftSize: validFFTSize,
-      updatedAt: new Date()
-    }));
+    setConfig(prevConfig => {
+      const newConfig = Object.assign(Object.create(Object.getPrototypeOf(prevConfig)), prevConfig);
+      newConfig.fftSize = validFFTSize;
+      newConfig.updatedAt = new Date();
+      return newConfig;
+    });
 
     // オーディオリポジトリにも反映
     if (audioRepository) {
@@ -124,11 +126,12 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
   const updateSmoothingTimeConstant = useCallback((smoothing: number) => {
     const validSmoothing = Math.max(0, Math.min(1, smoothing));
 
-    setConfig(prevConfig => ({
-      ...prevConfig,
-      smoothingTimeConstant: validSmoothing,
-      updatedAt: new Date()
-    }));
+    setConfig(prevConfig => {
+      const newConfig = Object.assign(Object.create(Object.getPrototypeOf(prevConfig)), prevConfig);
+      newConfig.smoothingTimeConstant = validSmoothing;
+      newConfig.updatedAt = new Date();
+      return newConfig;
+    });
 
     // オーディオリポジトリにも反映
     if (audioRepository) {

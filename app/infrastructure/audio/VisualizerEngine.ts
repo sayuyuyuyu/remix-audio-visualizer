@@ -9,6 +9,13 @@ export interface VisualizerOptions {
   sensitivity: number;
 }
 
+interface OrbitConfig {
+  radius: number;
+  speed: number;
+  planetCount: number;
+  size: number;
+}
+
 export interface Visualizer {
   render(audioData: AudioAnalysisData, options: VisualizerOptions): void;
 }
@@ -190,7 +197,7 @@ export class SolarSystemVisualizer implements Visualizer {
     ctx: CanvasRenderingContext2D,
     centerX: number,
     centerY: number,
-    orbits: any[],
+    orbits: OrbitConfig[],
     audioData: AudioAnalysisData,
     sensitivity: number
   ): void {
@@ -235,7 +242,7 @@ export class SolarSystemVisualizer implements Visualizer {
     ctx: CanvasRenderingContext2D,
     centerX: number,
     centerY: number,
-    orbits: any[],
+    orbits: OrbitConfig[],
     audioData: AudioAnalysisData,
     theme: ColorTheme,
     sensitivity: number
@@ -294,7 +301,7 @@ export class SolarSystemVisualizer implements Visualizer {
     ctx: CanvasRenderingContext2D,
     centerX: number,
     centerY: number,
-    orbit: any,
+    orbit: OrbitConfig,
     totalAngle: number,
     planetSize: number,
     r: number,
@@ -352,7 +359,7 @@ export class ParticleFieldVisualizer implements Visualizer {
     this.lastTime = currentTime;
 
     this.updateParticles(audioData, options, deltaTime);
-    this.drawParticles(canvas, options);
+    this.drawParticles(canvas);
   }
 
   private updateParticles(audioData: AudioAnalysisData, options: VisualizerOptions, deltaTime: number): void {
@@ -376,7 +383,7 @@ export class ParticleFieldVisualizer implements Visualizer {
     });
   }
 
-  private drawParticles(ctx: CanvasRenderingContext2D, options: VisualizerOptions): void {
+  private drawParticles(ctx: CanvasRenderingContext2D): void {
     this.particles.forEach(particle => {
       particle.draw(ctx);
     });
@@ -472,7 +479,7 @@ export class VisualizerEngine {
     if (!this.ctx || !this.canvas) return;
 
     // 背景のクリア
-    this.clearCanvas(options);
+    this.clearCanvas();
 
     // 有効なビジュアライザーをレンダリング
     if (audioData) {
@@ -490,7 +497,7 @@ export class VisualizerEngine {
     }
   }
 
-  private clearCanvas(options: VisualizerOptions): void {
+  private clearCanvas(): void {
     if (!this.ctx || !this.canvas) return;
 
     const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, this.canvas.height);
