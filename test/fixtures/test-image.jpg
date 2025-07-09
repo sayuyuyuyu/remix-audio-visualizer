@@ -1,0 +1,3 @@
+# This would be a binary JPEG file in a real implementation
+# For testing purposes, create a small valid JPEG file or use a mock
+# The actual test would need real image files
