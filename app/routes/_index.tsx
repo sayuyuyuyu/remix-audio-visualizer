@@ -91,7 +91,7 @@ export default function Index() {
   );
 
   // デバッグ用ログ
-  console.log("isPlaying:", audio.isPlaying, "isAnimating:", visualizer.isAnimating);
+  console.log("isPlaying:", audio.isPlaying, "isAnimating:", visualizer.isAnimating, "hasAudioFile:", !!audio.audioFile);
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       {/* ヘッダー */}

@@ -35,6 +35,13 @@ export function VisualizerCanvas({
     }
   }, [onCanvasReady]);
 
+  // キャンバスの準備完了を監視
+  useEffect(() => {
+    if (isCanvasReady && onCanvasReady && canvasRef.current) {
+      onCanvasReady(canvasRef.current);
+    }
+  }, [isCanvasReady, onCanvasReady]);
+
   // センター画像の設定
   useEffect(() => {
     if (centerImage && centerImage.url) {

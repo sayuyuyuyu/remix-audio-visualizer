@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ColorTheme } from '../../domain/entities/VisualizerConfig';
+import type { ColorTheme, VisualizerMode } from '../../domain/entities/VisualizerConfig';
 import { VisualizerConfigEntity } from '../../domain/entities/VisualizerConfig';
 import { VisualizerEngine } from '../../infrastructure/audio/VisualizerEngine';
 import { AudioRepositoryImpl } from '../../infrastructure/repositories/AudioRepositoryImpl';
@@ -14,13 +14,20 @@ export interface UseVisualizerReturn {
   updateSensitivity: (sensitivity: number) => void;
   updateFFTSize: (fftSize: number) => void;
   updateSmoothingTimeConstant: (smoothing: number) => void;
-  startAnimation: () => void;
+  startAnimation: (canvas?: HTMLCanvasElement) => void;
   stopAnimation: () => void;
   clearError: () => void;
 }
 
 export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisualizerReturn {
-  const [config, setConfig] = useState(() => new VisualizerConfigEntity());
+  const [config, setConfig] = useState(() => {
+    const newConfig = new VisualizerConfigEntity();
+    console.log("[useVisualizer] 初期設定:", {
+      enabledModes: newConfig.getEnabledModes().map(m => m.id),
+      sensitivity: newConfig.sensitivity
+    });
+    return newConfig;
+  });
   const [isAnimating, setIsAnimating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,6 +38,7 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
   // ビジュアライザーエンジンの初期化
   useEffect(() => {
     engineRef.current = new VisualizerEngine();
+    console.log("[useVisualizer] ビジュアライザーエンジンを初期化しました");
 
     return () => {
       if (animationIdRef.current) {
@@ -48,29 +56,39 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
 
   // アニメーションループ
   const animate = useCallback(() => {
-    if (!audioRepository || !engineRef.current || !canvasRef.current) {
+    if (!engineRef.current) {
       animationIdRef.current = requestAnimationFrame(animate);
       return;
     }
 
     try {
-      const webAudioService = audioRepository.getWebAudioService();
-      const audioData = webAudioService.getAnalysisData();
-
-      if (audioData) {
-        const enabledModes = config.getEnabledModes();
-        const options = {
-          width: canvasRef.current.width,
-          height: canvasRef.current.height,
-          theme: config.theme,
-          sensitivity: config.sensitivity
-        };
-
-        engineRef.current.render(enabledModes, audioData, options);
+      let audioData = null;
+      if (audioRepository) {
+        const webAudioService = audioRepository.getWebAudioService();
+        audioData = webAudioService.getAnalysisData();
       }
 
+      const enabledModes = config.getEnabledModes();
+      const options = {
+        width: canvasRef.current?.width || 1024,
+        height: canvasRef.current?.height || 500,
+        theme: config.theme,
+        sensitivity: config.sensitivity
+      };
+
+      // デバッグログ（初回のみ）
+      if (!animationIdRef.current) {
+        console.log("[useVisualizer] アニメーション開始:", {
+          enabledModes: enabledModes.map((m: VisualizerMode) => m.id),
+          hasAudioData: !!audioData,
+          options
+        });
+      }
+
+      engineRef.current.render(enabledModes, audioData, options);
       animationIdRef.current = requestAnimationFrame(animate);
     } catch (err) {
+      console.error("[useVisualizer] アニメーションエラー:", err);
       setError(err instanceof Error ? err.message : 'ビジュアライザーエラーが発生しました');
       setIsAnimating(false);
     }
@@ -139,11 +157,19 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
     }
   }, [audioRepository]);
 
-  // アニメーション開始
-  const startAnimation = useCallback(() => {
+    // アニメーション開始
+  const startAnimation = useCallback((canvas?: HTMLCanvasElement) => {
+    console.log("[useVisualizer] startAnimation called", { canvas: !!canvas, isAnimating });
+
+    if (canvas && engineRef.current) {
+      engineRef.current.setCanvas(canvas);
+      console.log("[useVisualizer] キャンバスを設定しました");
+    }
+
     if (!isAnimating) {
       setIsAnimating(true);
       animate();
+      console.log("[useVisualizer] アニメーションを開始しました");
     }
   }, [isAnimating, animate]);
 
