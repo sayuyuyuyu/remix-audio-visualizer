@@ -18,19 +18,43 @@ interface OrbitConfig {
 
 export interface Visualizer {
   render(audioData: AudioAnalysisData, options: VisualizerOptions): void;
+  setCanvasContext?(ctx: CanvasRenderingContext2D | null): void;
 }
 
 export class CircularVisualizer implements Visualizer {
+  private ctx: CanvasRenderingContext2D | null = null;
+
+  setCanvasContext(ctx: CanvasRenderingContext2D | null): void {
+    this.ctx = ctx;
+  }
+
   render(audioData: AudioAnalysisData, options: VisualizerOptions): void {
-    const canvas = this.getCanvasContext();
-    if (!canvas) return;
+    if (!this.ctx) return;
 
     const { width, height, theme, sensitivity } = options;
     const centerX = width / 2;
     const centerY = height / 2;
     const baseRadius = Math.min(width, height) * 0.15;
     const maxBarHeight = Math.min(width, height) * 0.12;
-    const bars = audioData.bufferLength * 0.8;
+    const bars = Math.min(audioData.bufferLength * 0.8, 128);
+
+    // オーディオデータがない場合のデフォルト表示
+    if (audioData.frequencyData.every(val => val === 0)) {
+      // 静的な円形パターンを描画
+      for (let i = 0; i < bars; i++) {
+        const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
+        const progress = i / bars;
+        const barHeight = Math.sin(progress * Math.PI * 4) * maxBarHeight * 0.3;
+
+        let barColor = theme.primary;
+        if (progress < 0.33) barColor = theme.primary;
+        else if (progress < 0.66) barColor = theme.secondary;
+        else barColor = theme.accent;
+
+        this.drawRadialBar(centerX, centerY, baseRadius, angle, barHeight, barColor);
+      }
+      return;
+    }
 
     for (let i = 0; i < bars; i++) {
       const rawValue = audioData.frequencyData[i];
@@ -48,12 +72,11 @@ export class CircularVisualizer implements Visualizer {
       else if (progress < 0.66) barColor = theme.secondary;
       else barColor = theme.accent;
 
-      this.drawRadialBar(canvas, centerX, centerY, baseRadius, angle, barHeight, barColor);
+      this.drawRadialBar(centerX, centerY, baseRadius, angle, barHeight, barColor);
     }
   }
 
   private drawRadialBar(
-    ctx: CanvasRenderingContext2D,
     centerX: number,
     centerY: number,
     radius: number,
@@ -61,7 +84,9 @@ export class CircularVisualizer implements Visualizer {
     height: number,
     color: string
   ): void {
-    const gradient = ctx.createLinearGradient(
+    if (!this.ctx) return;
+
+    const gradient = this.ctx.createLinearGradient(
       centerX + radius * Math.cos(angle),
       centerY + radius * Math.sin(angle),
       centerX + (radius + height) * Math.cos(angle),
@@ -70,75 +95,111 @@ export class CircularVisualizer implements Visualizer {
     gradient.addColorStop(0, color + '60');
     gradient.addColorStop(1, color);
 
-    ctx.strokeStyle = gradient;
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(
+    this.ctx.strokeStyle = gradient;
+    this.ctx.lineWidth = 5;
+    this.ctx.beginPath();
+    this.ctx.moveTo(
       centerX + radius * Math.cos(angle),
       centerY + radius * Math.sin(angle)
     );
-    ctx.lineTo(
+    this.ctx.lineTo(
       centerX + (radius + height) * Math.cos(angle),
       centerY + (radius + height) * Math.sin(angle)
     );
-    ctx.stroke();
-  }
-
-  private getCanvasContext(): CanvasRenderingContext2D | null {
-    const canvas = document.querySelector('canvas') as HTMLCanvasElement;
-    return canvas?.getContext('2d') || null;
+    this.ctx.stroke();
   }
 }
 
 export class WaveformVisualizer implements Visualizer {
+  private ctx: CanvasRenderingContext2D | null = null;
+
+  setCanvasContext(ctx: CanvasRenderingContext2D | null): void {
+    this.ctx = ctx;
+  }
+
   render(audioData: AudioAnalysisData, options: VisualizerOptions): void {
-    const canvas = this.getCanvasContext();
-    if (!canvas) return;
+    if (!this.ctx) return;
 
     const { width, height, theme } = options;
 
-    const gradient = canvas.createLinearGradient(0, 0, width, 0);
+    const gradient = this.ctx.createLinearGradient(0, 0, width, 0);
     gradient.addColorStop(0, theme.primary);
     gradient.addColorStop(0.5, theme.secondary);
     gradient.addColorStop(1, theme.accent);
 
-    canvas.strokeStyle = gradient;
-    canvas.lineWidth = 4;
-    canvas.beginPath();
+    this.ctx.strokeStyle = gradient;
+    this.ctx.lineWidth = 4;
+    this.ctx.beginPath();
 
     const sliceWidth = width / audioData.bufferLength;
     let x = 0;
 
-    for (let i = 0; i < audioData.bufferLength; i++) {
-      const v = audioData.timeDomainData[i] / 128.0;
-      const y = ((v - 1) * height) / 3 + height / 2;
+    // オーディオデータがない場合のデフォルト表示
+    if (audioData.timeDomainData.every(val => val === 128)) {
+      for (let i = 0; i < audioData.bufferLength; i++) {
+        const progress = i / audioData.bufferLength;
+        const v = Math.sin(progress * Math.PI * 8) * 0.3 + 1;
+        const y = ((v - 1) * height) / 3 + height / 2;
 
-      if (i === 0) canvas.moveTo(x, y);
-      else canvas.lineTo(x, y);
+        if (i === 0) this.ctx.moveTo(x, y);
+        else this.ctx.lineTo(x, y);
 
-      x += sliceWidth;
+        x += sliceWidth;
+      }
+    } else {
+      for (let i = 0; i < audioData.bufferLength; i++) {
+        const v = audioData.timeDomainData[i] / 128.0;
+        const y = ((v - 1) * height) / 3 + height / 2;
+
+        if (i === 0) this.ctx.moveTo(x, y);
+        else this.ctx.lineTo(x, y);
+
+        x += sliceWidth;
+      }
     }
 
-    canvas.lineTo(width, height / 2);
-    canvas.stroke();
-  }
-
-  private getCanvasContext(): CanvasRenderingContext2D | null {
-    const canvas = document.querySelector('canvas') as HTMLCanvasElement;
-    return canvas?.getContext('2d') || null;
+    this.ctx.lineTo(width, height / 2);
+    this.ctx.stroke();
   }
 }
 
 export class FrequencyBarsVisualizer implements Visualizer {
+  private ctx: CanvasRenderingContext2D | null = null;
+
+  setCanvasContext(ctx: CanvasRenderingContext2D | null): void {
+    this.ctx = ctx;
+  }
+
   render(audioData: AudioAnalysisData, options: VisualizerOptions): void {
-    const canvas = this.getCanvasContext();
-    if (!canvas) return;
+    if (!this.ctx) return;
 
     const { width, height, theme, sensitivity } = options;
     const maxBars = Math.min(audioData.bufferLength, 150);
     const barWidth = (width / maxBars) * 0.8;
     const barSpacing = (width / maxBars) * 0.2;
     let x = 0;
+
+    // オーディオデータがない場合のデフォルト表示
+    if (audioData.frequencyData.every(val => val === 0)) {
+      for (let i = 0; i < maxBars; i++) {
+        const progress = i / maxBars;
+        const barHeight = Math.sin(progress * Math.PI * 3) * height * 0.2;
+
+        let barColor = theme.primary;
+        if (progress < 0.33) barColor = theme.primary;
+        else if (progress < 0.66) barColor = theme.secondary;
+        else barColor = theme.accent;
+
+        const gradient = this.ctx.createLinearGradient(0, height, 0, height - barHeight);
+        gradient.addColorStop(0, barColor + '80');
+        gradient.addColorStop(1, barColor);
+
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(x, height - barHeight, barWidth, barHeight);
+        x += barWidth + barSpacing;
+      }
+      return;
+    }
 
     for (let i = 0; i < maxBars; i++) {
       const dataIndex = Math.floor((i / maxBars) * audioData.bufferLength);
@@ -153,28 +214,27 @@ export class FrequencyBarsVisualizer implements Visualizer {
       else if (progress < 0.66) barColor = theme.secondary;
       else barColor = theme.accent;
 
-      const gradient = canvas.createLinearGradient(0, height, 0, height - barHeight);
+      const gradient = this.ctx.createLinearGradient(0, height, 0, height - barHeight);
       gradient.addColorStop(0, barColor + '80');
       gradient.addColorStop(1, barColor);
 
-      canvas.fillStyle = gradient;
-      canvas.fillRect(x, height - barHeight, barWidth, barHeight);
+      this.ctx.fillStyle = gradient;
+      this.ctx.fillRect(x, height - barHeight, barWidth, barHeight);
       x += barWidth + barSpacing;
     }
-  }
-
-  private getCanvasContext(): CanvasRenderingContext2D | null {
-    const canvas = document.querySelector('canvas') as HTMLCanvasElement;
-    return canvas?.getContext('2d') || null;
   }
 }
 
 export class SolarSystemVisualizer implements Visualizer {
   private animationTime = 0;
+  private ctx: CanvasRenderingContext2D | null = null;
+
+  setCanvasContext(ctx: CanvasRenderingContext2D | null): void {
+    this.ctx = ctx;
+  }
 
   render(audioData: AudioAnalysisData, options: VisualizerOptions): void {
-    const canvas = this.getCanvasContext();
-    if (!canvas) return;
+    if (!this.ctx) return;
 
     this.animationTime += 0.01;
 
@@ -189,23 +249,25 @@ export class SolarSystemVisualizer implements Visualizer {
       { radius: 300, speed: -0.1, planetCount: 12, size: 2.5 }
     ];
 
-    this.drawOrbitalPaths(canvas, centerX, centerY, orbits, audioData, sensitivity);
-    this.drawPlanets(canvas, centerX, centerY, orbits, audioData, theme, sensitivity);
+    // オーディオデータがない場合でも惑星は動き続ける
+    this.drawOrbitalPaths(centerX, centerY, orbits, audioData, sensitivity);
+    this.drawPlanets(centerX, centerY, orbits, audioData, theme, sensitivity);
   }
 
   private drawOrbitalPaths(
-    ctx: CanvasRenderingContext2D,
     centerX: number,
     centerY: number,
     orbits: OrbitConfig[],
     audioData: AudioAnalysisData,
     sensitivity: number
   ): void {
-    ctx.strokeStyle = "rgba(200, 200, 200, 0.2)";
-    ctx.lineWidth = 1;
+    if (!this.ctx) return;
+
+    this.ctx.strokeStyle = "rgba(200, 200, 200, 0.2)";
+    this.ctx.lineWidth = 1;
 
     orbits.forEach(orbit => {
-      ctx.beginPath();
+      this.ctx!.beginPath();
       let isFirstPoint = true;
       const segmentCount = 64;
 
@@ -227,19 +289,18 @@ export class SolarSystemVisualizer implements Visualizer {
         const y = centerY + dynamicRadius * Math.sin(angle);
 
         if (isFirstPoint) {
-          ctx.moveTo(x, y);
+          this.ctx!.moveTo(x, y);
           isFirstPoint = false;
         } else {
-          ctx.lineTo(x, y);
+          this.ctx!.lineTo(x, y);
         }
       }
-      ctx.closePath();
-      ctx.stroke();
+      this.ctx!.closePath();
+      this.ctx!.stroke();
     });
   }
 
   private drawPlanets(
-    ctx: CanvasRenderingContext2D,
     centerX: number,
     centerY: number,
     orbits: OrbitConfig[],
@@ -247,6 +308,7 @@ export class SolarSystemVisualizer implements Visualizer {
     theme: ColorTheme,
     sensitivity: number
   ): void {
+    if (!this.ctx) return;
     const themeColors = [theme.primary, theme.secondary, theme.accent];
 
     orbits.forEach((orbit, orbitIndex) => {
@@ -283,22 +345,21 @@ export class SolarSystemVisualizer implements Visualizer {
         const b = parseInt(baseColor.slice(5, 7), 16);
 
         const opacity = 0.5 + normalizedAudio * 0.4;
-        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+        this.ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
 
-        ctx.beginPath();
-        ctx.arc(planetX, planetY, planetSize, 0, Math.PI * 2);
-        ctx.fill();
+        this.ctx.beginPath();
+        this.ctx.arc(planetX, planetY, planetSize, 0, Math.PI * 2);
+        this.ctx.fill();
 
         // トレイル効果
         if (normalizedAudio > 0.2) {
-          this.drawPlanetTrail(ctx, centerX, centerY, orbit, totalAngle, planetSize, r, g, b, normalizedAudio, audioData, sensitivity);
+          this.drawPlanetTrail(centerX, centerY, orbit, totalAngle, planetSize, r, g, b, normalizedAudio, audioData, sensitivity);
         }
       }
     });
   }
 
   private drawPlanetTrail(
-    ctx: CanvasRenderingContext2D,
     centerX: number,
     centerY: number,
     orbit: OrbitConfig,
@@ -311,6 +372,7 @@ export class SolarSystemVisualizer implements Visualizer {
     audioData: AudioAnalysisData,
     sensitivity: number
   ): void {
+    if (!this.ctx) return;
     const trailLength = 6;
 
     for (let t = 1; t <= trailLength; t++) {
@@ -333,33 +395,32 @@ export class SolarSystemVisualizer implements Visualizer {
       const trailOpacity = (1 - t / trailLength) * normalizedAudio * 0.3;
       const trailSize = planetSize * (1 - t / trailLength) * 0.4;
 
-      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${trailOpacity})`;
-      ctx.beginPath();
-      ctx.arc(trailX, trailY, trailSize, 0, Math.PI * 2);
-      ctx.fill();
+      this.ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${trailOpacity})`;
+      this.ctx.beginPath();
+      this.ctx.arc(trailX, trailY, trailSize, 0, Math.PI * 2);
+      this.ctx.fill();
     }
-  }
-
-  private getCanvasContext(): CanvasRenderingContext2D | null {
-    const canvas = document.querySelector('canvas') as HTMLCanvasElement;
-    return canvas?.getContext('2d') || null;
   }
 }
 
 export class ParticleFieldVisualizer implements Visualizer {
   private particles: Particle[] = [];
   private lastTime = 0;
+  private ctx: CanvasRenderingContext2D | null = null;
+
+  setCanvasContext(ctx: CanvasRenderingContext2D | null): void {
+    this.ctx = ctx;
+  }
 
   render(audioData: AudioAnalysisData, options: VisualizerOptions): void {
-    const canvas = this.getCanvasContext();
-    if (!canvas) return;
+    if (!this.ctx) return;
 
     const currentTime = Date.now();
     const deltaTime = currentTime - this.lastTime;
     this.lastTime = currentTime;
 
     this.updateParticles(audioData, options, deltaTime);
-    this.drawParticles(canvas);
+    this.drawParticles();
   }
 
   private updateParticles(audioData: AudioAnalysisData, options: VisualizerOptions, deltaTime: number): void {
@@ -369,10 +430,14 @@ export class ParticleFieldVisualizer implements Visualizer {
     const avgFrequency = audioData.frequencyData.reduce((sum, val) => sum + val, 0) / audioData.frequencyData.length;
     const intensity = (avgFrequency / 255) * sensitivity;
 
-    if (intensity > 0.1 && this.particles.length < 200) {
-      const particleCount = Math.floor(intensity * 5);
+    // オーディオデータがない場合のデフォルト強度
+    const defaultIntensity = 0.3;
+    const finalIntensity = intensity > 0.1 ? intensity : defaultIntensity;
+
+    if (this.particles.length < 200) {
+      const particleCount = Math.floor(finalIntensity * 3);
       for (let i = 0; i < particleCount; i++) {
-        this.particles.push(new Particle(width, height, theme, intensity));
+        this.particles.push(new Particle(width, height, theme, finalIntensity));
       }
     }
 
@@ -383,16 +448,14 @@ export class ParticleFieldVisualizer implements Visualizer {
     });
   }
 
-  private drawParticles(ctx: CanvasRenderingContext2D): void {
+  private drawParticles(): void {
+    if (!this.ctx) return;
+
     this.particles.forEach(particle => {
-      particle.draw(ctx);
+      particle.draw(this.ctx!);
     });
   }
 
-  private getCanvasContext(): CanvasRenderingContext2D | null {
-    const canvas = document.querySelector('canvas') as HTMLCanvasElement;
-    return canvas?.getContext('2d') || null;
-  }
 }
 
 class Particle {
@@ -428,8 +491,12 @@ class Particle {
     const audioValue = audioData.frequencyData[audioIndex] || 0;
     const audioInfluence = (audioValue / 255) * sensitivity * 0.5;
 
-    this.vx += (Math.random() - 0.5) * audioInfluence;
-    this.vy += (Math.random() - 0.5) * audioInfluence;
+    // オーディオデータがない場合のデフォルト揺らぎ
+    const defaultInfluence = 0.1;
+    const finalInfluence = audioInfluence > 0 ? audioInfluence : defaultInfluence;
+
+    this.vx += (Math.random() - 0.5) * finalInfluence;
+    this.vy += (Math.random() - 0.5) * finalInfluence;
 
     // 速度の減衰
     this.vx *= 0.99;
@@ -469,6 +536,13 @@ export class VisualizerEngine {
   setCanvas(canvas: HTMLCanvasElement): void {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
+
+    // 各ビジュアライザーにキャンバスコンテキストを設定
+    this.visualizers.forEach(visualizer => {
+      if ('setCanvasContext' in visualizer) {
+        (visualizer as any).setCanvasContext(this.ctx);
+      }
+    });
   }
 
   render(
@@ -476,17 +550,20 @@ export class VisualizerEngine {
     audioData: AudioAnalysisData | null,
     options: VisualizerOptions
   ): void {
-    if (!this.ctx || !this.canvas) return;
+    if (!this.ctx || !this.canvas) {
+      console.warn("[VisualizerEngine] キャンバスコンテキストが利用できません");
+      return;
+    }
 
     // 背景のクリア
     this.clearCanvas();
 
     // 有効なビジュアライザーをレンダリング
-    if (audioData) {
+    if (enabledModes.length > 0) {
       enabledModes.forEach(mode => {
         const visualizer = this.visualizers.get(mode.id);
         if (visualizer) {
-          visualizer.render(audioData, options);
+          visualizer.render(audioData || this.getEmptyAudioData(), options);
         }
       });
     }
@@ -534,5 +611,15 @@ export class VisualizerEngine {
     this.ctx.restore();
 
     this.ctx.shadowBlur = 0;
+  }
+
+  private getEmptyAudioData(): AudioAnalysisData {
+    const bufferLength = 256;
+    return {
+      frequencyData: new Uint8Array(bufferLength),
+      timeDomainData: new Uint8Array(bufferLength),
+      bufferLength,
+      sampleRate: 44100
+    };
   }
 }
