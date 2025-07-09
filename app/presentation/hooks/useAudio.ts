@@ -76,6 +76,7 @@ export function useAudio(): UseAudioReturn {
         if (audioRepositoryRef.current) {
           const playStateCleanup = audioRepositoryRef.current.onPlayStateChange(
             (playing) => {
+              console.log("[useAudio] onPlayStateChangeコールバック", playing);
               setIsPlaying(playing);
             }
           );
