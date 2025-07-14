@@ -101,14 +101,14 @@ export const VisualizerCanvas = forwardRef<HTMLCanvasElement, VisualizerCanvasPr
           {/* 中央のメッセージ */}
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center space-y-6">
-              <div className="w-20 h-20 mx-auto rounded-full bg-slate-700/30 flex items-center justify-center backdrop-blur-sm">
-                <span className="text-4xl opacity-70">🎵</span>
+              <div className="w-20 h-20 mx-auto rounded-full bg-slate-700/60 flex items-center justify-center backdrop-blur-sm">
+                <span className="text-4xl">🎵</span>
               </div>
               <div className="space-y-2">
-                <p className="text-slate-300 text-lg font-medium opacity-70">
+                <p className="text-slate-200 text-lg font-medium">
                   音楽を選択してください
                 </p>
-                <p className="text-slate-500 text-sm opacity-70">
+                <p className="text-slate-400 text-sm">
                   美しいビジュアライザーをお楽しみいただけます
                 </p>
               </div>
