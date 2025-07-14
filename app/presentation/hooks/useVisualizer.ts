@@ -42,14 +42,7 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
 
   // アニメーションループ - isAnimatingに依存しない
   const animate = useCallback(() => {
-    console.log('[useVisualizer] animate called, checking prerequisites:', {
-      engineRef: !!engineRef.current,
-      canvasRef: !!canvasRef.current,
-      animationId: animationIdRef.current
-    });
-
     if (!engineRef.current || !canvasRef.current) {
-      console.log('[useVisualizer] Missing engine or canvas, stopping animation');
       return;
     }
 
@@ -69,23 +62,6 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
         isPlaying: isPlaying
       };
 
-      // デバッグログ
-      if (audioData && isPlaying) {
-        console.log('[useVisualizer] Rendering with audio data:', {
-          enabledModes: enabledModes.length,
-          isPlaying,
-          audioDataLength: audioData.frequencyData.length,
-          maxFrequency: Math.max(...audioData.frequencyData),
-          canvasSize: `${canvasRef.current.width}x${canvasRef.current.height}`
-        });
-      } else {
-        console.log('[useVisualizer] Rendering waiting state:', {
-          audioData: !!audioData,
-          isPlaying,
-          enabledModes: enabledModes.length
-        });
-      }
-
       engineRef.current.render(enabledModes, audioData, options);
 
       // animationIdRefをチェックして継続するかを決定
@@ -93,7 +69,6 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
         animationIdRef.current = requestAnimationFrame(animate);
       }
     } catch (err) {
-      console.error('[useVisualizer] Animation error:', err);
       setError(err instanceof Error ? err.message : 'ビジュアライザーエラーが発生しました');
       setIsAnimating(false);
       animationIdRef.current = null;
@@ -196,15 +171,11 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
   useEffect(() => {
     if (audioRepository) {
       const cleanup = audioRepository.onPlayStateChange((playing) => {
-        console.log('[useVisualizer] Play state changed:', playing);
         setIsPlaying(playing);
         // アニメーションは常に継続する（待機状態の表示のため）
         if (animationIdRef.current === null) {
-          console.log('[useVisualizer] Starting animation on play state change');
           setIsAnimating(true);
           animationIdRef.current = requestAnimationFrame(animate);
-        } else {
-          console.log('[useVisualizer] Animation already running, animationId:', animationIdRef.current);
         }
       });
 
@@ -214,18 +185,12 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
 
   // 初期アニメーション開始
   useEffect(() => {
-    console.log('[useVisualizer] Initial animation check:', {
-      canvasRef: !!canvasRef.current,
-      engineRef: !!engineRef.current,
-      animationId: animationIdRef.current
-    });
-    
     if (canvasRef.current && engineRef.current && animationIdRef.current === null) {
-      console.log('[useVisualizer] Starting initial animation');
       setIsAnimating(true);
       animationIdRef.current = requestAnimationFrame(animate);
     }
-  }, [animate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 初回のみ実行したいためanimateの依存関係を意図的に省略
 
   return {
     config,
