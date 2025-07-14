@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AudioRepositoryImpl } from './AudioRepositoryImpl';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AudioFileEntity } from '../../domain/entities/AudioFile';
 import { WebAudioService } from '../audio/WebAudioService';
+import { AudioRepositoryImpl } from './AudioRepositoryImpl';
 
 // Mock WebAudioService
 vi.mock('../audio/WebAudioService', () => ({
@@ -105,7 +105,9 @@ describe('AudioRepositoryImpl', () => {
       const mockFrequencyData = new Uint8Array([1, 2, 3, 4]);
       vi.mocked(mockWebAudioService.getAnalysisData).mockReturnValue({
         frequencyData: mockFrequencyData,
-        timeData: new Uint8Array()
+        timeDomainData: new Uint8Array(),
+        bufferLength: 512,
+        sampleRate: 44100
       });
 
       const result = await repository.getAudioData();
