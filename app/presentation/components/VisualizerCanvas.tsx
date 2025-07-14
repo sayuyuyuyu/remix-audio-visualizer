@@ -63,11 +63,11 @@ export const VisualizerCanvas = forwardRef<HTMLCanvasElement, VisualizerCanvasPr
       {/* メインキャンバス */}
       <canvas
         ref={(canvas) => {
-          canvasRef.current = canvas;
+          (canvasRef as React.MutableRefObject<HTMLCanvasElement | null>).current = canvas;
           if (typeof ref === 'function') {
             ref(canvas);
           } else if (ref) {
-            ref.current = canvas;
+            (ref as React.MutableRefObject<HTMLCanvasElement | null>).current = canvas;
           }
         }}
         width={width}
