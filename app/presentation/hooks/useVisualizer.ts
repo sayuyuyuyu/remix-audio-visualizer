@@ -187,7 +187,7 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
 
       return cleanup;
     }
-  }, [audioRepository, animate]);
+  }, [audioRepository]);
 
   // 初期アニメーション開始 - animateRef準備後に実行
   useEffect(() => {
