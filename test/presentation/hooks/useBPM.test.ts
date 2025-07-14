@@ -182,7 +182,7 @@ describe('useBPM', () => {
   it('should reset detection when audio repository changes to null', () => {
     const { result, rerender } = renderHook(
       ({ audioRepo }: { audioRepo: AudioRepositoryImpl | null }) => useBPM(audioRepo, false),
-      { initialProps: { audioRepo: mockAudioRepository } }
+      { initialProps: { audioRepo: mockAudioRepository as AudioRepositoryImpl } }
     );
 
     // Change to null

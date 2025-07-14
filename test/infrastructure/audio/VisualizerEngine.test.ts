@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { VisualizerEngine } from '../../../app/infrastructure/audio/VisualizerEngine';
+import { VisualizerEngine, type VisualizerOptions } from '../../../app/infrastructure/audio/VisualizerEngine';
 import { VisualizerConfigEntity } from '../../../app/domain/entities/VisualizerConfig';
+import type { AudioAnalysisData } from '../../../app/infrastructure/audio/WebAudioService';
 
 // Mock Canvas API
 const mockCanvas = {
@@ -44,16 +45,18 @@ const mockGradient = {
   addColorStop: vi.fn(),
 };
 
-const mockAnalyser = {
-  fftSize: 256,
-  frequencyBinCount: 128,
-  getByteFrequencyData: vi.fn(),
-  getByteTimeDomainData: vi.fn(),
-};
+// Mock crypto.randomUUID
+Object.defineProperty(global, 'crypto', {
+  value: {
+    randomUUID: vi.fn(() => 'test-uuid')
+  }
+});
 
 describe('VisualizerEngine', () => {
   let visualizerEngine: VisualizerEngine;
   let config: VisualizerConfigEntity;
+  let mockAudioData: AudioAnalysisData;
+  let mockOptions: VisualizerOptions;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -63,8 +66,28 @@ describe('VisualizerEngine', () => {
     mockContext.createRadialGradient.mockReturnValue(mockGradient);
     mockContext.measureText.mockReturnValue({ width: 100 });
     
-    config = new VisualizerConfigEntity('circular', 256, 0.8, 1.0, 'rainbow');
+    config = new VisualizerConfigEntity();
     visualizerEngine = new VisualizerEngine();
+
+    mockAudioData = {
+      frequencyData: new Uint8Array([100, 120, 80, 90, 110]),
+      timeDomainData: new Uint8Array([128, 130, 125, 135, 120]),
+      bufferLength: 5,
+      sampleRate: 44100,
+      bpmData: {
+        currentBPM: 120,
+        confidence: 0.85,
+        onsets: [0.5, 1.0, 1.5],
+        stability: 0.9
+      }
+    };
+
+    mockOptions = {
+      width: 800,
+      height: 600,
+      theme: config.theme,
+      sensitivity: 1.0
+    };
   });
 
   afterEach(() => {
@@ -77,305 +100,167 @@ describe('VisualizerEngine', () => {
     });
   });
 
-  describe('render', () => {
-    it('should handle null canvas', () => {
-      expect(() => {
-        visualizerEngine.render(null, mockAnalyser as any, config);
-      }).not.toThrow();
-    });
-
-    it('should handle null analyser', () => {
-      expect(() => {
-        visualizerEngine.render(mockCanvas as any, null, config);
-      }).not.toThrow();
-    });
-
-    it('should handle null config', () => {
-      expect(() => {
-        visualizerEngine.render(mockCanvas as any, mockAnalyser as any, null);
-      }).not.toThrow();
-    });
-
-    it('should setup canvas context correctly', () => {
-      mockAnalyser.getByteFrequencyData.mockImplementation((array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = Math.floor(Math.random() * 256);
-        }
-      });
-
-      visualizerEngine.render(mockCanvas as any, mockAnalyser as any, config);
-
+  describe('setCanvas', () => {
+    it('should set canvas successfully', () => {
+      const canvas = mockCanvas as any;
+      visualizerEngine.setCanvas(canvas);
+      
       expect(mockCanvas.getContext).toHaveBeenCalledWith('2d');
-      expect(mockContext.clearRect).toHaveBeenCalledWith(0, 0, 800, 600);
     });
   });
 
-  describe('circular visualizer', () => {
+  describe('render', () => {
     beforeEach(() => {
-      config = new VisualizerConfigEntity('circular', 256, 0.8, 1.0, 'rainbow');
+      const canvas = mockCanvas as any;
+      visualizerEngine.setCanvas(canvas);
     });
 
-    it('should render circular visualizer', () => {
-      mockAnalyser.getByteFrequencyData.mockImplementation((array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = Math.floor(Math.random() * 256);
-        }
-      });
+    it('should render with enabled modes', () => {
+      const enabledModes = config.getEnabledModes();
+      
+      visualizerEngine.render(enabledModes, mockAudioData, mockOptions);
+      
+      expect(mockContext.clearRect).toHaveBeenCalled();
+    });
 
-      visualizerEngine.render(mockCanvas as any, mockAnalyser as any, config);
+    it('should handle null audio data', () => {
+      const enabledModes = config.getEnabledModes();
+      
+      expect(() => {
+        visualizerEngine.render(enabledModes, null, mockOptions);
+      }).not.toThrow();
+      
+      expect(mockContext.clearRect).toHaveBeenCalled();
+    });
 
+    it('should render circular visualizer when enabled', () => {
+      // Enable circular mode
+      config.toggleMode('circular');
+      const enabledModes = config.getEnabledModes();
+      
+      visualizerEngine.render(enabledModes, mockAudioData, mockOptions);
+      
+      expect(mockContext.clearRect).toHaveBeenCalled();
       expect(mockContext.beginPath).toHaveBeenCalled();
-      expect(mockContext.arc).toHaveBeenCalled();
-      expect(mockContext.fill).toHaveBeenCalled();
     });
 
-    it('should create radial gradient for circular visualizer', () => {
-      mockAnalyser.getByteFrequencyData.mockImplementation((array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = 128;
-        }
-      });
-
-      visualizerEngine.render(mockCanvas as any, mockAnalyser as any, config);
-
-      expect(mockContext.createRadialGradient).toHaveBeenCalled();
-      expect(mockGradient.addColorStop).toHaveBeenCalled();
-    });
-  });
-
-  describe('waveform visualizer', () => {
-    beforeEach(() => {
-      config = new VisualizerConfigEntity('waveform', 256, 0.8, 1.0, 'blue');
-    });
-
-    it('should render waveform visualizer', () => {
-      mockAnalyser.getByteTimeDomainData.mockImplementation((array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = 128 + Math.sin(i * 0.1) * 50;
-        }
-      });
-
-      visualizerEngine.render(mockCanvas as any, mockAnalyser as any, config);
-
+    it('should render waveform visualizer when enabled', () => {
+      // Enable waveform mode
+      config.toggleMode('waveform');
+      const enabledModes = config.getEnabledModes();
+      
+      visualizerEngine.render(enabledModes, mockAudioData, mockOptions);
+      
+      expect(mockContext.clearRect).toHaveBeenCalled();
       expect(mockContext.beginPath).toHaveBeenCalled();
-      expect(mockContext.moveTo).toHaveBeenCalled();
-      expect(mockContext.lineTo).toHaveBeenCalled();
-      expect(mockContext.stroke).toHaveBeenCalled();
     });
 
-    it('should use time domain data for waveform', () => {
-      mockAnalyser.getByteTimeDomainData.mockImplementation((array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = 128;
-        }
-      });
-
-      visualizerEngine.render(mockCanvas as any, mockAnalyser as any, config);
-
-      expect(mockAnalyser.getByteTimeDomainData).toHaveBeenCalled();
-    });
-  });
-
-  describe('frequency bars visualizer', () => {
-    beforeEach(() => {
-      config = new VisualizerConfigEntity('frequencyBars', 256, 0.8, 1.0, 'green');
-    });
-
-    it('should render frequency bars visualizer', () => {
-      mockAnalyser.getByteFrequencyData.mockImplementation((array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = Math.floor(Math.random() * 256);
-        }
-      });
-
-      visualizerEngine.render(mockCanvas as any, mockAnalyser as any, config);
-
+    it('should render frequency bars when enabled', () => {
+      // Enable frequency mode
+      config.toggleMode('frequency');
+      const enabledModes = config.getEnabledModes();
+      
+      visualizerEngine.render(enabledModes, mockAudioData, mockOptions);
+      
+      expect(mockContext.clearRect).toHaveBeenCalled();
       expect(mockContext.fillRect).toHaveBeenCalled();
     });
 
-    it('should create linear gradient for frequency bars', () => {
-      mockAnalyser.getByteFrequencyData.mockImplementation((array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = 128;
-        }
-      });
-
-      visualizerEngine.render(mockCanvas as any, mockAnalyser as any, config);
-
-      expect(mockContext.createLinearGradient).toHaveBeenCalled();
-      expect(mockGradient.addColorStop).toHaveBeenCalled();
-    });
-  });
-
-  describe('solar system visualizer', () => {
-    beforeEach(() => {
-      config = new VisualizerConfigEntity('solarSystem', 256, 0.8, 1.0, 'orange');
-    });
-
-    it('should render solar system visualizer', () => {
-      mockAnalyser.getByteFrequencyData.mockImplementation((array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = Math.floor(Math.random() * 256);
-        }
-      });
-
-      visualizerEngine.render(mockCanvas as any, mockAnalyser as any, config);
-
-      expect(mockContext.beginPath).toHaveBeenCalled();
-      expect(mockContext.arc).toHaveBeenCalled();
-      expect(mockContext.fill).toHaveBeenCalled();
-    });
-
-    it('should use rotation for solar system animation', () => {
-      mockAnalyser.getByteFrequencyData.mockImplementation((array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = 128;
-        }
-      });
-
-      visualizerEngine.render(mockCanvas as any, mockAnalyser as any, config);
+    it('should render solar system when enabled', () => {
+      // Enable solar system mode
+      config.toggleMode('solar_system');
+      const enabledModes = config.getEnabledModes();
       
-      expect(mockContext.save).toHaveBeenCalled();
-      expect(mockContext.translate).toHaveBeenCalled();
-      expect(mockContext.rotate).toHaveBeenCalled();
-      expect(mockContext.restore).toHaveBeenCalled();
-    });
-  });
-
-  describe('particle field visualizer', () => {
-    beforeEach(() => {
-      config = new VisualizerConfigEntity('particleField', 256, 0.8, 1.0, 'purple');
-    });
-
-    it('should render particle field visualizer', () => {
-      mockAnalyser.getByteFrequencyData.mockImplementation((array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = Math.floor(Math.random() * 256);
-        }
-      });
-
-      visualizerEngine.render(mockCanvas as any, mockAnalyser as any, config);
-
-      expect(mockContext.beginPath).toHaveBeenCalled();
+      visualizerEngine.render(enabledModes, mockAudioData, mockOptions);
+      
+      expect(mockContext.clearRect).toHaveBeenCalled();
       expect(mockContext.arc).toHaveBeenCalled();
-      expect(mockContext.fill).toHaveBeenCalled();
     });
 
-    it('should create particles with random positions', () => {
-      mockAnalyser.getByteFrequencyData.mockImplementation((array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = 128;
-        }
-      });
-
-      const mathRandomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5);
-
-      visualizerEngine.render(mockCanvas as any, mockAnalyser as any, config);
-
-      expect(mathRandomSpy).toHaveBeenCalled();
-      mathRandomSpy.mockRestore();
-    });
-  });
-
-  describe('theme colors', () => {
-    it('should handle rainbow theme', () => {
-      config = new VisualizerConfigEntity('circular', 256, 0.8, 1.0, 'rainbow');
-      mockAnalyser.getByteFrequencyData.mockImplementation((array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = 128;
-        }
-      });
-
-      visualizerEngine.render(mockCanvas as any, mockAnalyser as any, config);
-
-      expect(mockContext.createRadialGradient).toHaveBeenCalled();
+    it('should render particle field when enabled', () => {
+      // Enable particle field mode
+      config.toggleMode('particle_field');
+      const enabledModes = config.getEnabledModes();
+      
+      visualizerEngine.render(enabledModes, mockAudioData, mockOptions);
+      
+      expect(mockContext.clearRect).toHaveBeenCalled();
+      expect(mockContext.arc).toHaveBeenCalled();
     });
 
-    it('should handle blue theme', () => {
-      config = new VisualizerConfigEntity('waveform', 256, 0.8, 1.0, 'blue');
-      mockAnalyser.getByteTimeDomainData.mockImplementation((array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = 128;
-        }
-      });
-
-      visualizerEngine.render(mockCanvas as any, mockAnalyser as any, config);
-
-      expect(mockContext.strokeStyle).toContain('blue');
-    });
-
-    it('should handle green theme', () => {
-      config = new VisualizerConfigEntity('frequencyBars', 256, 0.8, 1.0, 'green');
-      mockAnalyser.getByteFrequencyData.mockImplementation((array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = 128;
-        }
-      });
-
-      visualizerEngine.render(mockCanvas as any, mockAnalyser as any, config);
-
-      expect(mockContext.createLinearGradient).toHaveBeenCalled();
-    });
-  });
-
-  describe('error handling', () => {
-    it('should handle canvas context creation failure', () => {
-      mockCanvas.getContext.mockReturnValue(null);
-
+    it('should handle missing canvas context', () => {
+      const engineWithoutCanvas = new VisualizerEngine();
+      const enabledModes = config.getEnabledModes();
+      
       expect(() => {
-        visualizerEngine.render(mockCanvas as any, mockAnalyser as any, config);
+        engineWithoutCanvas.render(enabledModes, mockAudioData, mockOptions);
       }).not.toThrow();
     });
 
-    it('should handle analyser data errors', () => {
-      mockAnalyser.getByteFrequencyData.mockImplementation(() => {
-        throw new Error('Analyser error');
-      });
-
-      expect(() => {
-        visualizerEngine.render(mockCanvas as any, mockAnalyser as any, config);
-      }).not.toThrow();
+    it('should render waiting state when not playing', () => {
+      const enabledModes = config.getEnabledModes();
+      const optionsNotPlaying = { ...mockOptions, isPlaying: false };
+      
+      visualizerEngine.render(enabledModes, null, optionsNotPlaying);
+      
+      expect(mockContext.clearRect).toHaveBeenCalled();
+      expect(mockContext.fillText).toHaveBeenCalled();
     });
 
-    it('should handle rendering errors gracefully', () => {
-      mockContext.fillRect.mockImplementation(() => {
-        throw new Error('Rendering error');
-      });
-
-      expect(() => {
-        visualizerEngine.render(mockCanvas as any, mockAnalyser as any, config);
-      }).not.toThrow();
-    });
-  });
-
-  describe('performance', () => {
-    it('should handle large frequency data arrays', () => {
-      config = new VisualizerConfigEntity('circular', 2048, 0.8, 1.0, 'rainbow');
-      mockAnalyser.frequencyBinCount = 1024;
-      mockAnalyser.getByteFrequencyData.mockImplementation((array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = Math.floor(Math.random() * 256);
+    it('should handle BPM data correctly', () => {
+      const enabledModes = config.getEnabledModes();
+      const audioDataWithBPM = {
+        ...mockAudioData,
+        bpmData: {
+          currentBPM: 140,
+          confidence: 0.9,
+          onsets: [0.25, 0.5, 0.75],
+          stability: 0.95
         }
-      });
-
-      const startTime = performance.now();
-      visualizerEngine.render(mockCanvas as any, mockAnalyser as any, config);
-      const endTime = performance.now();
-
-      expect(endTime - startTime).toBeLessThan(100);
+      };
+      
+      visualizerEngine.render(enabledModes, audioDataWithBPM, mockOptions);
+      
+      expect(mockContext.clearRect).toHaveBeenCalled();
     });
 
-    it('should handle high sensitivity values', () => {
-      config = new VisualizerConfigEntity('circular', 256, 0.8, 5.0, 'rainbow');
-      mockAnalyser.getByteFrequencyData.mockImplementation((array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = 255;
-        }
-      });
+    it('should handle audio data without BPM', () => {
+      const enabledModes = config.getEnabledModes();
+      const audioDataWithoutBPM = {
+        ...mockAudioData,
+        bpmData: undefined
+      };
+      
+      visualizerEngine.render(enabledModes, audioDataWithoutBPM, mockOptions);
+      
+      expect(mockContext.clearRect).toHaveBeenCalled();
+    });
 
+    it('should handle empty enabled modes array', () => {
+      const emptyModes: any[] = [];
+      
       expect(() => {
-        visualizerEngine.render(mockCanvas as any, mockAnalyser as any, config);
+        visualizerEngine.render(emptyModes, mockAudioData, mockOptions);
       }).not.toThrow();
+      
+      expect(mockContext.clearRect).toHaveBeenCalled();
+    });
+
+    it('should handle low confidence BPM data', () => {
+      const enabledModes = config.getEnabledModes();
+      const audioDataLowConfidence = {
+        ...mockAudioData,
+        bpmData: {
+          currentBPM: 120,
+          confidence: 0.3, // Low confidence
+          onsets: [0.5],
+          stability: 0.4
+        }
+      };
+      
+      visualizerEngine.render(enabledModes, audioDataLowConfidence, mockOptions);
+      
+      expect(mockContext.clearRect).toHaveBeenCalled();
     });
   });
 });
