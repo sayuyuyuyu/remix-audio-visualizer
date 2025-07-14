@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { FileUploadArea } from './FileUploadArea';
 import { useDragAndDrop } from '../hooks/useFileUpload';
 
@@ -131,14 +131,14 @@ describe('FileUploadArea', () => {
       onDrop: vi.fn()
     };
 
-    useDragAndDrop.mockReturnValue({
+    mockUseDragAndDrop.mockReturnValue({
       isDragging: false,
       dragProps: mockDragProps
     });
 
     render(<FileUploadArea {...defaultProps} />);
 
-    expect(useDragAndDrop).toHaveBeenCalledWith(
+    expect(mockUseDragAndDrop).toHaveBeenCalledWith(
       expect.any(Function),
       ['audio/mpeg', 'audio/wav', 'audio/ogg']
     );
@@ -148,7 +148,7 @@ describe('FileUploadArea', () => {
     const onFileSelect = vi.fn();
     let dropCallback: (files: File[]) => void = () => {};
 
-    useDragAndDrop.mockImplementation((callback) => {
+    mockUseDragAndDrop.mockImplementation((callback: (files: File[]) => void) => {
       dropCallback = callback;
       return {
         isDragging: false,
@@ -172,7 +172,7 @@ describe('FileUploadArea', () => {
     const onFileSelect = vi.fn();
     let dropCallback: (files: File[]) => void = () => {};
 
-    useDragAndDrop.mockImplementation((callback) => {
+    mockUseDragAndDrop.mockImplementation((callback: (files: File[]) => void) => {
       dropCallback = callback;
       return {
         isDragging: false,
@@ -197,7 +197,7 @@ describe('FileUploadArea', () => {
     const onFileSelect = vi.fn();
     let dropCallback: (files: File[]) => void = () => {};
 
-    useDragAndDrop.mockImplementation((callback) => {
+    mockUseDragAndDrop.mockImplementation((callback: (files: File[]) => void) => {
       dropCallback = callback;
       return {
         isDragging: false,
@@ -218,7 +218,7 @@ describe('FileUploadArea', () => {
 
   it('should show dragging state', () => {
 
-    useDragAndDrop.mockReturnValue({
+    mockUseDragAndDrop.mockReturnValue({
       isDragging: true,
       dragProps: {
         onDragOver: vi.fn(),

@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useFileUpload, createFileSelector, useDragAndDrop } from './useFileUpload';
 import { AudioFileEntity } from '../../domain/entities/AudioFile';
 import { CenterImageEntity } from '../../domain/entities/CenterImage';
