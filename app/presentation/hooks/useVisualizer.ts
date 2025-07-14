@@ -39,42 +39,49 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
     };
   }, []);
 
-  // キャンバスの設定
-  useEffect(() => {
-    if (canvasRef.current && engineRef.current) {
-      engineRef.current.setCanvas(canvasRef.current);
-    }
-  }, []);
-
   // アニメーションループ
   const animate = useCallback(() => {
-    if (!audioRepository || !engineRef.current || !canvasRef.current) {
-      animationIdRef.current = requestAnimationFrame(animate);
+    if (!engineRef.current || !canvasRef.current) {
       return;
     }
 
     try {
-      const webAudioService = audioRepository.getWebAudioService();
-      const audioData = webAudioService.getAnalysisData();
-
-      if (audioData) {
-        const enabledModes = config.getEnabledModes();
-        const options = {
-          width: canvasRef.current.width,
-          height: canvasRef.current.height,
-          theme: config.theme,
-          sensitivity: config.sensitivity
-        };
-
-        engineRef.current.render(enabledModes, audioData, options);
+      let audioData = null;
+      if (audioRepository) {
+        const webAudioService = audioRepository.getWebAudioService();
+        audioData = webAudioService.getAnalysisData();
       }
 
-      animationIdRef.current = requestAnimationFrame(animate);
+      const enabledModes = config.getEnabledModes();
+      const options = {
+        width: canvasRef.current.width,
+        height: canvasRef.current.height,
+        theme: config.theme,
+        sensitivity: config.sensitivity
+      };
+
+      engineRef.current.render(enabledModes, audioData, options);
+
+      if (isAnimating) {
+        animationIdRef.current = requestAnimationFrame(animate);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ビジュアライザーエラーが発生しました');
       setIsAnimating(false);
     }
-  }, [audioRepository, config]);
+  }, [audioRepository, config, isAnimating]);
+
+  // キャンバスの設定
+  useEffect(() => {
+    if (canvasRef.current && engineRef.current) {
+      engineRef.current.setCanvas(canvasRef.current);
+      // 初期状態でアニメーションを開始
+      if (!isAnimating) {
+        setIsAnimating(true);
+        animate();
+      }
+    }
+  }, [animate, isAnimating]);
 
   // モードの切り替え
   const toggleMode = useCallback((modeId: string) => {

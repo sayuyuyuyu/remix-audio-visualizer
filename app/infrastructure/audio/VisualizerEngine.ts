@@ -489,6 +489,9 @@ export class VisualizerEngine {
           visualizer.render(audioData, options);
         }
       });
+    } else {
+      // 音楽が再生されていない場合は待機状態の表示
+      this.renderWaitingState(options);
     }
 
     // センター画像の描画
@@ -507,6 +510,34 @@ export class VisualizerEngine {
 
     this.ctx.fillStyle = gradient;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+
+  private renderWaitingState(options: VisualizerOptions): void {
+    if (!this.ctx || !this.canvas) return;
+
+    const centerX = this.canvas.width / 2;
+    const centerY = this.canvas.height / 2;
+    const radius = 50;
+
+    // パルスエフェクト用の時間ベースの値
+    const time = Date.now() * 0.001;
+    const pulse = Math.sin(time * 2) * 0.3 + 0.7;
+
+    // 待機状態の円を描画
+    this.ctx.strokeStyle = options.theme.primary + '80';
+    this.ctx.lineWidth = 3;
+    this.ctx.globalAlpha = pulse;
+    this.ctx.beginPath();
+    this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    this.ctx.stroke();
+    this.ctx.globalAlpha = 1;
+
+    // 音楽ノートアイコンを描画
+    this.ctx.fillStyle = options.theme.primary;
+    this.ctx.font = '24px Arial';
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText('♪', centerX, centerY);
   }
 
   private renderCenterImage(image: HTMLImageElement, options: VisualizerOptions): void {
