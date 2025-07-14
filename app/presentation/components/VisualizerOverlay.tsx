@@ -21,9 +21,6 @@ export const VisualizerOverlay: React.FC<VisualizerOverlayProps> = ({
 
   const displayBPM = bpmData && bpmData.currentBPM > 0 ? Math.round(bpmData.currentBPM) : '--';
   const confidence = bpmData ? bpmData.confidence : 0;
-  
-  // デバッグ用
-  console.log('VisualizerOverlay:', { bpmData, displayBPM, confidence });
 
   // Get confidence color
   const getConfidenceColor = (conf: number): string => {
