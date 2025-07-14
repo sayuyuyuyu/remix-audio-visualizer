@@ -454,6 +454,17 @@ export class VisualizerEngine {
   private canvas: HTMLCanvasElement | null = null;
   private ctx: CanvasRenderingContext2D | null = null;
 
+  // 待機状態表示用の定数
+  private static readonly WAITING_STATE_CIRCLE_RADIUS = 50;
+  private static readonly WAITING_STATE_STROKE_WIDTH = 3;
+  private static readonly WAITING_STATE_FONT_SIZE = 24;
+  private static readonly WAITING_STATE_FONT_FAMILY = 'Arial';
+  private static readonly WAITING_STATE_PULSE_FREQUENCY = 2;
+  private static readonly WAITING_STATE_PULSE_AMPLITUDE = 0.3;
+  private static readonly WAITING_STATE_PULSE_OFFSET = 0.7;
+  private static readonly WAITING_STATE_TIME_SCALE = 0.001;
+  private static readonly WAITING_STATE_OPACITY_SUFFIX = '80';
+
   constructor() {
     this.initializeVisualizers();
   }
@@ -517,24 +528,25 @@ export class VisualizerEngine {
 
     const centerX = this.canvas.width / 2;
     const centerY = this.canvas.height / 2;
-    const radius = 50;
 
     // パルスエフェクト用の時間ベースの値
-    const time = Date.now() * 0.001;
-    const pulse = Math.sin(time * 2) * 0.3 + 0.7;
+    const time = Date.now() * VisualizerEngine.WAITING_STATE_TIME_SCALE;
+    const pulse = Math.sin(time * VisualizerEngine.WAITING_STATE_PULSE_FREQUENCY) * 
+                  VisualizerEngine.WAITING_STATE_PULSE_AMPLITUDE + 
+                  VisualizerEngine.WAITING_STATE_PULSE_OFFSET;
 
     // 待機状態の円を描画
-    this.ctx.strokeStyle = options.theme.primary + '80';
-    this.ctx.lineWidth = 3;
+    this.ctx.strokeStyle = options.theme.primary + VisualizerEngine.WAITING_STATE_OPACITY_SUFFIX;
+    this.ctx.lineWidth = VisualizerEngine.WAITING_STATE_STROKE_WIDTH;
     this.ctx.globalAlpha = pulse;
     this.ctx.beginPath();
-    this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    this.ctx.arc(centerX, centerY, VisualizerEngine.WAITING_STATE_CIRCLE_RADIUS, 0, Math.PI * 2);
     this.ctx.stroke();
     this.ctx.globalAlpha = 1;
 
     // 音楽ノートアイコンを描画
     this.ctx.fillStyle = options.theme.primary;
-    this.ctx.font = '24px Arial';
+    this.ctx.font = `${VisualizerEngine.WAITING_STATE_FONT_SIZE}px ${VisualizerEngine.WAITING_STATE_FONT_FAMILY}`;
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';
     this.ctx.fillText('♪', centerX, centerY);
