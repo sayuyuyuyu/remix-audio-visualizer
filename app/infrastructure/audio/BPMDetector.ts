@@ -18,7 +18,7 @@ export class BPMDetector {
   private onsetHistory: number[] = [];
   private bpmHistory: number[] = [];
   private lastOnsetTime = 0;
-  private frameCount = 0;
+  private lastTimestamp = 0;
   
   // Parameters for onset detection
   private readonly WINDOW_SIZE = 43; // ~1 second at 43fps
@@ -46,8 +46,12 @@ export class BPMDetector {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     sampleRate: number
   ): BPMAnalysisData {
-    this.frameCount++;
-    const currentTime = this.frameCount / 60; // Assuming 60fps
+    const currentTime = performance.now() / 1000; // 現在の時刻（秒）
+    
+    // 初回実行時のタイムスタンプを保存
+    if (this.lastTimestamp === 0) {
+      this.lastTimestamp = currentTime;
+    }
     
     // Calculate spectral energy
     const spectralEnergy = this.calculateSpectralEnergy(frequencyData);
@@ -391,6 +395,6 @@ export class BPMDetector {
     this.onsetHistory = [];
     this.bpmHistory = [];
     this.lastOnsetTime = 0;
-    this.frameCount = 0;
+    this.lastTimestamp = 0;
   }
 }

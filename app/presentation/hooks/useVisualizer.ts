@@ -62,29 +62,34 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
       }
 
       // 一時停止時でも最後のオーディオデータを使用、または静的なダミーデータを作成
-      let dataToUse = audioData || lastAudioDataRef.current;
+      let dataToUse = audioData;
       
-      // 音楽が選択されているがデータがない場合は静的なダミーデータを作成
-      // ただし、lastAudioDataRef.currentがある場合のみ（つまり一度は再生されたことがある場合）
-      if (!dataToUse && audioRepository && !isPlaying && lastAudioDataRef.current) {
-        // 一度再生されたことがある場合のみ、静的なダミーデータを作成
-        const staticFrequencyData = new Uint8Array(256);
-        const staticTimeDomainData = new Uint8Array(256);
-        
-        for (let i = 0; i < 256; i++) {
-          // 周波数データ: 低周波数から高周波数にかけて減衰するパターン
-          staticFrequencyData[i] = Math.max(10, 50 - (i * 0.15));
-          // 時間領域データ: 静的な正弦波パターン
-          staticTimeDomainData[i] = Math.floor(128 + 20 * Math.sin(i * 0.1));
+      // 音楽が選択されているが現在のデータがない場合
+      if (!dataToUse && audioRepository) {
+        if (lastAudioDataRef.current) {
+          // 一度再生されたことがある場合は最後のオーディオデータを使用
+          dataToUse = lastAudioDataRef.current;
+        } else if (!isPlaying) {
+          // 一度も再生されていない場合は静的なダミーデータを作成
+          const bufferLength = 256; // デフォルトのバッファサイズ
+          const staticFrequencyData = new Uint8Array(bufferLength);
+          const staticTimeDomainData = new Uint8Array(bufferLength);
+          
+          for (let i = 0; i < bufferLength; i++) {
+            // 周波数データ: 低周波数から高周波数にかけて減衰するパターン
+            staticFrequencyData[i] = Math.max(10, 50 - (i * 0.15));
+            // 時間領域データ: 静的な正弦波パターン
+            staticTimeDomainData[i] = Math.floor(128 + 20 * Math.sin(i * 0.1));
+          }
+          
+          dataToUse = {
+            frequencyData: staticFrequencyData,
+            timeDomainData: staticTimeDomainData,
+            bufferLength,
+            sampleRate: 44100,
+            bpmData: undefined
+          } as AudioAnalysisData;
         }
-        
-        dataToUse = {
-          frequencyData: staticFrequencyData,
-          timeDomainData: staticTimeDomainData,
-          bufferLength: 256,
-          sampleRate: 44100,
-          bpmData: undefined
-        } as AudioAnalysisData;
       }
 
       const enabledModes = config.getEnabledModes();
