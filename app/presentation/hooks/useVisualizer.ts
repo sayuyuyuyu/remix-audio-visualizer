@@ -3,6 +3,7 @@ import type { ColorTheme } from '../../domain/entities/VisualizerConfig';
 import { VisualizerConfigEntity } from '../../domain/entities/VisualizerConfig';
 import { VisualizerEngine } from '../../infrastructure/audio/VisualizerEngine';
 import { AudioRepositoryImpl } from '../../infrastructure/repositories/AudioRepositoryImpl';
+import type { AudioAnalysisData } from '../../infrastructure/audio/WebAudioService';
 
 export interface UseVisualizerReturn {
   config: VisualizerConfigEntity;
@@ -29,6 +30,7 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
   const engineRef = useRef<VisualizerEngine | null>(null);
   const animationIdRef = useRef<number | null>(null);
   const animateRef = useRef<() => void>();
+  const lastAudioDataRef = useRef<AudioAnalysisData | null>(null); // 最後のオーディオデータを保持
 
   // ビジュアライザーエンジンの初期化
   useEffect(() => {
@@ -52,6 +54,42 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
       if (audioRepository) {
         const webAudioService = audioRepository.getWebAudioService();
         audioData = webAudioService.getAnalysisData();
+        
+        // 音楽が再生中の場合は最後のオーディオデータを更新
+        if (isPlaying && audioData) {
+          lastAudioDataRef.current = audioData;
+        }
+      }
+
+      // 一時停止時でも最後のオーディオデータを使用、または静的なダミーデータを作成
+      let dataToUse = audioData;
+      
+      // 音楽が選択されているが現在のデータがない場合
+      if (!dataToUse && audioRepository) {
+        if (lastAudioDataRef.current) {
+          // 一度再生されたことがある場合は最後のオーディオデータを使用
+          dataToUse = lastAudioDataRef.current;
+        } else if (!isPlaying) {
+          // 一度も再生されていない場合は静的なダミーデータを作成
+          const bufferLength = 256; // デフォルトのバッファサイズ
+          const staticFrequencyData = new Uint8Array(bufferLength);
+          const staticTimeDomainData = new Uint8Array(bufferLength);
+          
+          for (let i = 0; i < bufferLength; i++) {
+            // 周波数データ: 低周波数から高周波数にかけて減衰するパターン
+            staticFrequencyData[i] = Math.max(10, 50 - (i * 0.15));
+            // 時間領域データ: 静的な正弦波パターン
+            staticTimeDomainData[i] = Math.floor(128 + 20 * Math.sin(i * 0.1));
+          }
+          
+          dataToUse = {
+            frequencyData: staticFrequencyData,
+            timeDomainData: staticTimeDomainData,
+            bufferLength,
+            sampleRate: 44100,
+            bpmData: undefined
+          } as AudioAnalysisData;
+        }
       }
 
       const enabledModes = config.getEnabledModes();
@@ -63,7 +101,7 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
         isPlaying: isPlaying
       };
 
-      engineRef.current.render(enabledModes, audioData, options);
+      engineRef.current.render(enabledModes, dataToUse, options);
 
       // animationIdRefをチェックして継続するかを決定
       if (animationIdRef.current !== null) {
@@ -91,8 +129,21 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
   // モードの切り替え
   const toggleMode = useCallback((modeId: string) => {
     setConfig(prevConfig => {
-      const newConfig = Object.assign(Object.create(Object.getPrototypeOf(prevConfig)), prevConfig);
-      newConfig.toggleMode(modeId);
+      // 新しいインスタンスを作成
+      const newConfig = new VisualizerConfigEntity();
+      
+      // 現在の設定をコピー
+      newConfig.modes = prevConfig.modes.map(mode => ({
+        ...mode,
+        enabled: mode.id === modeId ? !mode.enabled : mode.enabled
+      }));
+      newConfig.theme = { ...prevConfig.theme };
+      newConfig.sensitivity = prevConfig.sensitivity;
+      newConfig.fftSize = prevConfig.fftSize;
+      newConfig.smoothingTimeConstant = prevConfig.smoothingTimeConstant;
+      newConfig.createdAt = prevConfig.createdAt;
+      newConfig.updatedAt = new Date();
+      
       return newConfig;
     });
   }, []);
@@ -100,8 +151,18 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
   // テーマの更新
   const updateTheme = useCallback((theme: ColorTheme) => {
     setConfig(prevConfig => {
-      const newConfig = Object.assign(Object.create(Object.getPrototypeOf(prevConfig)), prevConfig);
-      newConfig.applyTheme(theme);
+      // 新しいインスタンスを作成
+      const newConfig = new VisualizerConfigEntity();
+      
+      // 現在の設定をコピー
+      newConfig.modes = prevConfig.modes.map(mode => ({ ...mode }));
+      newConfig.theme = { ...theme };
+      newConfig.sensitivity = prevConfig.sensitivity;
+      newConfig.fftSize = prevConfig.fftSize;
+      newConfig.smoothingTimeConstant = prevConfig.smoothingTimeConstant;
+      newConfig.createdAt = prevConfig.createdAt;
+      newConfig.updatedAt = new Date();
+      
       return newConfig;
     });
   }, []);
@@ -109,9 +170,18 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
   // 感度の更新
   const updateSensitivity = useCallback((sensitivity: number) => {
     setConfig(prevConfig => {
-      const newConfig = Object.assign(Object.create(Object.getPrototypeOf(prevConfig)), prevConfig);
+      // 新しいインスタンスを作成
+      const newConfig = new VisualizerConfigEntity();
+      
+      // 現在の設定をコピー
+      newConfig.modes = prevConfig.modes.map(mode => ({ ...mode }));
+      newConfig.theme = { ...prevConfig.theme };
       newConfig.sensitivity = Math.max(0.1, Math.min(3.0, sensitivity));
+      newConfig.fftSize = prevConfig.fftSize;
+      newConfig.smoothingTimeConstant = prevConfig.smoothingTimeConstant;
+      newConfig.createdAt = prevConfig.createdAt;
       newConfig.updatedAt = new Date();
+      
       return newConfig;
     });
   }, []);
@@ -122,9 +192,18 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
     const validFFTSize = validSizes.includes(fftSize) ? fftSize : 512;
 
     setConfig(prevConfig => {
-      const newConfig = Object.assign(Object.create(Object.getPrototypeOf(prevConfig)), prevConfig);
+      // 新しいインスタンスを作成
+      const newConfig = new VisualizerConfigEntity();
+      
+      // 現在の設定をコピー
+      newConfig.modes = prevConfig.modes.map(mode => ({ ...mode }));
+      newConfig.theme = { ...prevConfig.theme };
+      newConfig.sensitivity = prevConfig.sensitivity;
       newConfig.fftSize = validFFTSize;
+      newConfig.smoothingTimeConstant = prevConfig.smoothingTimeConstant;
+      newConfig.createdAt = prevConfig.createdAt;
       newConfig.updatedAt = new Date();
+      
       return newConfig;
     });
 
@@ -139,9 +218,18 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
     const validSmoothing = Math.max(0, Math.min(1, smoothing));
 
     setConfig(prevConfig => {
-      const newConfig = Object.assign(Object.create(Object.getPrototypeOf(prevConfig)), prevConfig);
+      // 新しいインスタンスを作成
+      const newConfig = new VisualizerConfigEntity();
+      
+      // 現在の設定をコピー
+      newConfig.modes = prevConfig.modes.map(mode => ({ ...mode }));
+      newConfig.theme = { ...prevConfig.theme };
+      newConfig.sensitivity = prevConfig.sensitivity;
+      newConfig.fftSize = prevConfig.fftSize;
       newConfig.smoothingTimeConstant = validSmoothing;
+      newConfig.createdAt = prevConfig.createdAt;
       newConfig.updatedAt = new Date();
+      
       return newConfig;
     });
 

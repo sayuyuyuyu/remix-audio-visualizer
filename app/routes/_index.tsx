@@ -2,12 +2,15 @@ import type { MetaFunction } from "@remix-run/node";
 import { useCallback, useState } from "react";
 import type { CenterImageEntity } from "../domain/entities/CenterImage";
 import { AudioControls } from "../presentation/components/AudioControls";
+import { BPMDisplay } from "../presentation/components/BPMDisplay";
 import { FileUploadArea } from "../presentation/components/FileUploadArea";
 import { VisualizerCanvas } from "../presentation/components/VisualizerCanvas";
+import { VisualizerOverlay } from "../presentation/components/VisualizerOverlay";
 import { Button } from "../presentation/components/ui/Button";
 import { Card } from "../presentation/components/ui/Card";
 import { ToastContainer, useToast } from "../presentation/components/ui/Toast";
 import { useAudio } from "../presentation/hooks/useAudio";
+import { useBPM } from "../presentation/hooks/useBPM";
 import { useFileUpload } from "../presentation/hooks/useFileUpload";
 import { useVisualizer } from "../presentation/hooks/useVisualizer";
 
@@ -40,6 +43,9 @@ export default function Index() {
 
   // audioRepositoryを取得してビジュアライザーに渡す
   const visualizer = useVisualizer(audio.audioRepository ?? undefined);
+
+  // BPM検出機能
+  const bpm = useBPM(audio.audioRepository, audio.isPlaying);
 
   // ファイルアップロードハンドラー
   const handleAudioUpload = useCallback(
@@ -79,11 +85,14 @@ export default function Index() {
   // ビジュアライザーモードの切り替えハンドラー
   const handleModeToggle = useCallback(
     (modeId: string) => {
-      visualizer.toggleMode(modeId);
       const mode = visualizer.config.modes.find((m) => m.id === modeId);
+      const willBeEnabled = mode ? !mode.enabled : false;
+      
+      visualizer.toggleMode(modeId);
+      
       if (mode) {
         success(
-          `${mode.nameJa}モードを${mode.enabled ? "有効" : "無効"}にしました`
+          `${mode.nameJa}モードを${willBeEnabled ? "有効" : "無効"}にしました`
         );
       }
     },
@@ -107,7 +116,7 @@ export default function Index() {
       {/* メインコンテンツ */}
       <main className="max-w-7xl mx-auto px-4 md:px-6 space-y-8">
         {/* ビジュアライザーキャンバス */}
-        <Card variant="glass" padding="sm" className="overflow-hidden shadow-xl">
+        <Card variant="glass" padding="sm" className="overflow-hidden shadow-xl relative">
           <VisualizerCanvas
             ref={visualizer.canvasRef}
             centerImage={centerImage}
@@ -116,6 +125,13 @@ export default function Index() {
             isPlaying={audio.isPlaying}
             isAnimating={visualizer.isAnimating}
             className="w-full"
+          />
+          
+          {/* ビジュアライザーオーバーレイ */}
+          <VisualizerOverlay
+            audioFile={audio.audioFile}
+            bpmData={bpm.bpmData}
+            isPlaying={audio.isPlaying}
           />
         </Card>
 
@@ -178,6 +194,13 @@ export default function Index() {
                     </p>
                   </div>
                 </Card>
+              )}
+
+              {/* BPM表示 */}
+              {audio.audioFile && (
+                <BPMDisplay 
+                  bpmData={bpm.bpmData}
+                />
               )}
             </div>
           </div>
@@ -252,14 +275,14 @@ export default function Index() {
         </div>
 
         {/* エラー表示 */}
-        {(audio.error || visualizer.error) && (
+        {(audio.error || visualizer.error || bpm.error) && (
           <Card variant="outline" className="border-red-200 bg-red-50">
             <div className="flex items-center gap-3">
               <span className="text-red-500 text-lg">⚠️</span>
               <div>
                 <p className="text-red-800 font-medium">エラーが発生しました</p>
                 <p className="text-red-600 text-sm">
-                  {audio.error || visualizer.error}
+                  {audio.error || visualizer.error || bpm.error}
                 </p>
               </div>
               <Button
@@ -268,6 +291,7 @@ export default function Index() {
                 onClick={() => {
                   audio.clearError();
                   visualizer.clearError();
+                  bpm.clearError();
                 }}
                 className="ml-auto"
               >

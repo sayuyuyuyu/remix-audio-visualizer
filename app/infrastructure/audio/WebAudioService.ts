@@ -3,7 +3,17 @@ export interface AudioAnalysisData {
   timeDomainData: Uint8Array;
   bufferLength: number;
   sampleRate: number;
+  bpmData?: BPMAnalysisData;
 }
+
+export interface BPMAnalysisData {
+  currentBPM: number;
+  confidence: number;
+  onsets: number[];
+  stability: number;
+}
+
+import { BPMDetector } from './BPMDetector';
 
 export class WebAudioService {
   private audioContext: AudioContext | null = null;
@@ -11,6 +21,7 @@ export class WebAudioService {
   private source: MediaElementAudioSourceNode | null = null;
   private audioElement: HTMLAudioElement | null = null;
   private gainNode: GainNode | null = null;
+  private bpmDetector: BPMDetector = new BPMDetector();
 
   // 音声コンテキストの初期化
   async initializeAudioContext(): Promise<void> {
@@ -77,11 +88,17 @@ export class WebAudioService {
     this.analyser.getByteFrequencyData(frequencyData);
     this.analyser.getByteTimeDomainData(timeDomainData);
 
+    const sampleRate = this.audioContext?.sampleRate || 44100;
+
+    // BPM検出
+    const bpmData = this.bpmDetector.detectBPM(frequencyData, timeDomainData, sampleRate);
+
     return {
       frequencyData,
       timeDomainData,
       bufferLength,
-      sampleRate: this.audioContext?.sampleRate || 44100
+      sampleRate,
+      bpmData
     };
   }
 
@@ -166,6 +183,11 @@ export class WebAudioService {
     return this.audioElement?.duration || 0;
   }
 
+  // BPM検出器のリセット
+  resetBPMDetector(): void {
+    this.bpmDetector.reset();
+  }
+
   // リソースの解放
   dispose(): void {
     if (this.source) {
@@ -189,5 +211,6 @@ export class WebAudioService {
     }
 
     this.audioElement = null;
+    this.bpmDetector.reset();
   }
 }
