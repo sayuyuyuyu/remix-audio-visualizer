@@ -76,42 +76,20 @@ export const VisualizerCanvas = forwardRef<HTMLCanvasElement, VisualizerCanvasPr
         style={{ aspectRatio: `${width}/${height}` }}
       />
 
-      {/* 音声ファイルがない場合の静的ビジュアライザー */}
+      {/* 音声ファイルがない場合のメッセージ */}
       {!hasAudioFile && (
-        <div className="absolute inset-0">
-          {/* 静的なビジュアライザー背景 */}
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 via-purple-500/20 to-pink-500/20 animate-pulse-slow" />
-          
-          {/* 静的なパーティクル効果 */}
-          <div className="absolute inset-0">
-            {Array.from({ length: 12 }, (_, i) => (
-              <div
-                key={i}
-                className="absolute w-2 h-2 bg-white/20 rounded-full animate-pulse"
-                style={{
-                  left: `${(i * 8.33) % 100}%`,
-                  top: `${Math.sin(i * 0.5) * 30 + 50}%`,
-                  animationDelay: `${i * 0.5}s`,
-                  animationDuration: `${3 + (i % 3)}s`,
-                }}
-              />
-            ))}
-          </div>
-          
-          {/* 中央のメッセージ */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center space-y-6">
-              <div className="w-20 h-20 mx-auto rounded-full bg-slate-700/60 flex items-center justify-center backdrop-blur-sm">
-                <span className="text-4xl">🎵</span>
-              </div>
-              <div className="space-y-2">
-                <p className="text-slate-200 text-lg font-medium">
-                  音楽を選択してください
-                </p>
-                <p className="text-slate-400 text-sm">
-                  美しいビジュアライザーをお楽しみいただけます
-                </p>
-              </div>
+        <div className="absolute inset-0 bg-slate-900 flex items-center justify-center">
+          <div className="text-center space-y-6">
+            <div className="w-20 h-20 mx-auto rounded-full bg-slate-700 flex items-center justify-center">
+              <span className="text-4xl">🎵</span>
+            </div>
+            <div className="space-y-2">
+              <p className="text-slate-200 text-lg font-medium">
+                音楽を選択してください
+              </p>
+              <p className="text-slate-400 text-sm">
+                美しいビジュアライザーをお楽しみいただけます
+              </p>
             </div>
           </div>
         </div>
