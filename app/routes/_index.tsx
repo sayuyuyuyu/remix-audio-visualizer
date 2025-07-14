@@ -5,6 +5,7 @@ import { AudioControls } from "../presentation/components/AudioControls";
 import { BPMDisplay } from "../presentation/components/BPMDisplay";
 import { FileUploadArea } from "../presentation/components/FileUploadArea";
 import { VisualizerCanvas } from "../presentation/components/VisualizerCanvas";
+import { VisualizerOverlay } from "../presentation/components/VisualizerOverlay";
 import { Button } from "../presentation/components/ui/Button";
 import { Card } from "../presentation/components/ui/Card";
 import { ToastContainer, useToast } from "../presentation/components/ui/Toast";
@@ -84,11 +85,14 @@ export default function Index() {
   // ビジュアライザーモードの切り替えハンドラー
   const handleModeToggle = useCallback(
     (modeId: string) => {
-      visualizer.toggleMode(modeId);
       const mode = visualizer.config.modes.find((m) => m.id === modeId);
+      const willBeEnabled = mode ? !mode.enabled : false;
+      
+      visualizer.toggleMode(modeId);
+      
       if (mode) {
         success(
-          `${mode.nameJa}モードを${mode.enabled ? "有効" : "無効"}にしました`
+          `${mode.nameJa}モードを${willBeEnabled ? "有効" : "無効"}にしました`
         );
       }
     },
@@ -112,7 +116,7 @@ export default function Index() {
       {/* メインコンテンツ */}
       <main className="max-w-7xl mx-auto px-4 md:px-6 space-y-8">
         {/* ビジュアライザーキャンバス */}
-        <Card variant="glass" padding="sm" className="overflow-hidden shadow-xl">
+        <Card variant="glass" padding="sm" className="overflow-hidden shadow-xl relative">
           <VisualizerCanvas
             ref={visualizer.canvasRef}
             centerImage={centerImage}
@@ -121,6 +125,13 @@ export default function Index() {
             isPlaying={audio.isPlaying}
             isAnimating={visualizer.isAnimating}
             className="w-full"
+          />
+          
+          {/* ビジュアライザーオーバーレイ */}
+          <VisualizerOverlay
+            audioFile={audio.audioFile}
+            bmpData={bpm.bmpData}
+            isPlaying={audio.isPlaying}
           />
         </Card>
 
