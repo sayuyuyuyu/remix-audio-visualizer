@@ -7,6 +7,7 @@ export interface VisualizerOptions {
   centerImage?: HTMLImageElement;
   theme: ColorTheme;
   sensitivity: number;
+  bpmMultiplier?: number;
 }
 
 interface OrbitConfig {
@@ -25,17 +26,32 @@ export class CircularVisualizer implements Visualizer {
     const canvas = this.getCanvasContext();
     if (!canvas) return;
 
-    const { width, height, theme, sensitivity } = options;
+    const { width, height, theme, sensitivity, bpmMultiplier = 1 } = options;
     const centerX = width / 2;
     const centerY = height / 2;
     const baseRadius = Math.min(width, height) * 0.15;
     const maxBarHeight = Math.min(width, height) * 0.12;
     const bars = audioData.bufferLength * 0.8;
 
+    // BPMに基づく脈動効果
+    const bpmData = audioData.bpmData;
+    let radiusMultiplier = 1;
+    let intensityMultiplier = 1;
+    
+    if (bpmData && bpmData.currentBPM > 0 && bpmData.confidence > 0.5) {
+      const currentTime = Date.now() / 1000;
+      const beatInterval = 60 / bpmData.currentBPM;
+      const beatPhase = (currentTime % beatInterval) / beatInterval;
+      
+      // 脈動効果（サインカーブ）
+      radiusMultiplier = 1 + Math.sin(beatPhase * Math.PI * 2) * 0.1 * bpmMultiplier;
+      intensityMultiplier = 1 + Math.sin(beatPhase * Math.PI * 2) * 0.2 * bpmMultiplier;
+    }
+
     for (let i = 0; i < bars; i++) {
       const rawValue = audioData.frequencyData[i];
       const threshold = 15;
-      const scaledValue = rawValue > threshold ? (rawValue - threshold) * sensitivity : 0;
+      const scaledValue = rawValue > threshold ? (rawValue - threshold) * sensitivity * intensityMultiplier : 0;
       const barHeight = Math.min(scaledValue, maxBarHeight);
 
       if (barHeight < 1) continue;
@@ -48,7 +64,7 @@ export class CircularVisualizer implements Visualizer {
       else if (progress < 0.66) barColor = theme.secondary;
       else barColor = theme.accent;
 
-      this.drawRadialBar(canvas, centerX, centerY, baseRadius, angle, barHeight, barColor);
+      this.drawRadialBar(canvas, centerX, centerY, baseRadius * radiusMultiplier, angle, barHeight, barColor);
     }
   }
 

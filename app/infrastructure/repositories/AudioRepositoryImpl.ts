@@ -1,7 +1,7 @@
 import type { AudioFileEntity } from "../../domain/entities/AudioFile";
 import { AudioFileEntity as AudioFileEntityClass } from "../../domain/entities/AudioFile";
 import type { AudioRepository } from "../../domain/repositories/AudioRepository";
-import { WebAudioService } from "../audio/WebAudioService";
+import { WebAudioService, type AudioAnalysisData } from "../audio/WebAudioService";
 
 export class AudioRepositoryImpl implements AudioRepository {
   private webAudioService: WebAudioService;
@@ -41,6 +41,16 @@ export class AudioRepositoryImpl implements AudioRepository {
   async getAudioData(): Promise<Uint8Array | null> {
     const analysisData = this.webAudioService.getAnalysisData();
     return analysisData ? analysisData.frequencyData : null;
+  }
+
+  // BPM検出のための完全な音声解析データを取得
+  getAudioAnalysisData(): AudioAnalysisData | null {
+    return this.webAudioService.getAnalysisData();
+  }
+
+  // BPM検出器をリセット
+  resetBPMDetector(): void {
+    this.webAudioService.resetBPMDetector();
   }
 
   async play(audioFile: AudioFileEntity): Promise<void> {
