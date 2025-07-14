@@ -4,14 +4,14 @@ import type { BPMAnalysisData } from '../../infrastructure/audio/WebAudioService
 
 interface VisualizerOverlayProps {
   audioFile: AudioFileEntity | null;
-  bmpData: BPMAnalysisData | null;
+  bpmData: BPMAnalysisData | null;
   isPlaying: boolean;
   className?: string;
 }
 
 export const VisualizerOverlay: React.FC<VisualizerOverlayProps> = ({ 
   audioFile, 
-  bmpData, 
+  bpmData, 
   isPlaying, 
   className = '' 
 }) => {
@@ -19,8 +19,11 @@ export const VisualizerOverlay: React.FC<VisualizerOverlayProps> = ({
     return null;
   }
 
-  const displayBPM = bmpData && bmpData.currentBPM > 0 ? Math.round(bmpData.currentBPM) : '--';
-  const confidence = bmpData ? bmpData.confidence : 0;
+  const displayBPM = bpmData && bpmData.currentBPM > 0 ? Math.round(bpmData.currentBPM) : '--';
+  const confidence = bpmData ? bpmData.confidence : 0;
+  
+  // デバッグ用
+  console.log('VisualizerOverlay:', { bpmData, displayBPM, confidence });
 
   // Get confidence color
   const getConfidenceColor = (conf: number): string => {
@@ -45,16 +48,20 @@ export const VisualizerOverlay: React.FC<VisualizerOverlayProps> = ({
               {isPlaying ? '再生中' : '停止中'}
             </span>
           </div>
-          <h3 className="text-sm font-semibold text-white mt-1 max-w-[200px] truncate">
-            {audioFile.name}
-          </h3>
+          <div className="max-w-[200px] mt-1 overflow-hidden relative">
+            <h3 className={`text-sm font-semibold text-white whitespace-nowrap ${
+              audioFile.name.length > 25 ? 'animate-scroll' : ''
+            }`}>
+              {audioFile.name}
+            </h3>
+          </div>
         </div>
 
         {/* BPM表示 */}
         <div className="border-t border-gray-600 pt-2">
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-300">BPM</span>
-            {bmpData && bmpData.currentBPM > 0 && (
+            {bpmData && bpmData.currentBPM > 0 && (
               <span className={`text-xs ${getConfidenceColor(confidence)}`}>
                 {Math.round(confidence * 100)}%
               </span>
@@ -68,7 +75,7 @@ export const VisualizerOverlay: React.FC<VisualizerOverlayProps> = ({
           </div>
           
           {/* ビートインジケーター */}
-          {bmpData && bmpData.currentBPM > 0 && confidence > 0.5 && (
+          {bpmData && bpmData.currentBPM > 0 && confidence > 0.5 && (
             <div className="flex items-center space-x-1 mt-1">
               <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
               <span className="text-xs text-gray-400">ビート検出中</span>

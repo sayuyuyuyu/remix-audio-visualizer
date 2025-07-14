@@ -130,7 +130,7 @@ export default function Index() {
           {/* ビジュアライザーオーバーレイ */}
           <VisualizerOverlay
             audioFile={audio.audioFile}
-            bmpData={bpm.bmpData}
+            bpmData={bpm.bpmData}
             isPlaying={audio.isPlaying}
           />
         </Card>
