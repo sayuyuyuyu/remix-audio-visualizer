@@ -65,8 +65,9 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
       let dataToUse = audioData || lastAudioDataRef.current;
       
       // 音楽が選択されているがデータがない場合は静的なダミーデータを作成
-      if (!dataToUse && audioRepository && !isPlaying) {
-        // 太陽系や波形でもある程度の形が見えるように、バリエーションのあるデータを作成
+      // ただし、lastAudioDataRef.currentがある場合のみ（つまり一度は再生されたことがある場合）
+      if (!dataToUse && audioRepository && !isPlaying && lastAudioDataRef.current) {
+        // 一度再生されたことがある場合のみ、静的なダミーデータを作成
         const staticFrequencyData = new Uint8Array(256);
         const staticTimeDomainData = new Uint8Array(256);
         
