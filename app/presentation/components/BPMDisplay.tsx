@@ -33,13 +33,13 @@ export const BPMDisplay: React.FC<BPMDisplayProps> = ({ bpmData, className = '' 
   };
 
   return (
-    <div className={`bg-gray-800 rounded-lg p-4 ${className}`}>
+    <div className={`bg-white/80 backdrop-blur-sm rounded-lg p-4 border border-slate-200 ${className}`}>
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-medium text-gray-300">BPM</h3>
+        <h3 className="text-sm font-medium text-slate-700">BPM</h3>
         <div className="flex items-center space-x-2">
           {/* Confidence indicator */}
           <div className="flex items-center space-x-1">
-            <div className="w-2 h-2 rounded-full bg-gray-600"></div>
+            <div className="w-2 h-2 rounded-full bg-slate-400"></div>
             <span className={`text-xs ${getConfidenceColor(confidence)}`}>
               {Math.round(confidence * 100)}%
             </span>
@@ -49,19 +49,19 @@ export const BPMDisplay: React.FC<BPMDisplayProps> = ({ bpmData, className = '' 
       
       {/* BPM Display */}
       <div className="flex items-baseline space-x-2 mb-3">
-        <span className="text-3xl font-bold text-white font-mono">
+        <span className="text-3xl font-bold text-slate-800 font-mono">
           {displayBPM}
         </span>
-        <span className="text-sm text-gray-400">BPM</span>
+        <span className="text-sm text-slate-600">BPM</span>
       </div>
       
       {/* Stability Bar */}
       <div className="mb-2">
-        <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
+        <div className="flex items-center justify-between text-xs text-slate-600 mb-1">
           <span>安定性</span>
           <span>{Math.round(stability * 100)}%</span>
         </div>
-        <div className="w-full bg-gray-700 rounded-full h-2">
+        <div className="w-full bg-slate-300 rounded-full h-2">
           <div 
             className={`h-2 rounded-full transition-all duration-300 ${getStabilityColor(stability)}`}
             style={{ width: `${stability * 100}%` }}
@@ -75,9 +75,9 @@ export const BPMDisplay: React.FC<BPMDisplayProps> = ({ bpmData, className = '' 
           <div className={`w-3 h-3 rounded-full transition-all duration-150 ${
             currentBPM > 0 && confidence > 0.5 
               ? 'bg-blue-500 animate-pulse' 
-              : 'bg-gray-600'
+              : 'bg-slate-400'
           }`}></div>
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-slate-600">
             {currentBPM > 0 && confidence > 0.5 ? 'ビート検出中' : '検出待機中'}
           </span>
         </div>

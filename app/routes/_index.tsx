@@ -189,7 +189,6 @@ export default function Index() {
               {audio.audioFile && (
                 <BPMDisplay 
                   bpmData={bpm.bpmData}
-                  className="bg-white/50 backdrop-blur-sm"
                 />
               )}
             </div>

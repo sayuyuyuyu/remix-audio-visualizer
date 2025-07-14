@@ -35,14 +35,16 @@ export class BPMDetector {
   /**
    * Process audio data and detect BPM
    * @param frequencyData - Frequency domain data from Web Audio API
-   * @param timeDomainData - Time domain data from Web Audio API
-   * @param sampleRate - Audio sample rate
+   * @param timeDomainData - Time domain data from Web Audio API (reserved for future use)
+   * @param sampleRate - Audio sample rate (reserved for future use)
    * @returns BPM analysis data
    */
   detectBPM(
     frequencyData: Uint8Array,
-    _timeDomainData: Uint8Array,
-    _sampleRate: number
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    timeDomainData: Uint8Array,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    sampleRate: number
   ): BPMAnalysisData {
     this.frameCount++;
     const currentTime = this.frameCount / 60; // Assuming 60fps

@@ -91,8 +91,21 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
   // モードの切り替え
   const toggleMode = useCallback((modeId: string) => {
     setConfig(prevConfig => {
-      const newConfig = Object.assign(Object.create(Object.getPrototypeOf(prevConfig)), prevConfig);
-      newConfig.toggleMode(modeId);
+      // 新しいインスタンスを作成
+      const newConfig = new VisualizerConfigEntity();
+      
+      // 現在の設定をコピー
+      newConfig.modes = prevConfig.modes.map(mode => ({
+        ...mode,
+        enabled: mode.id === modeId ? !mode.enabled : mode.enabled
+      }));
+      newConfig.theme = { ...prevConfig.theme };
+      newConfig.sensitivity = prevConfig.sensitivity;
+      newConfig.fftSize = prevConfig.fftSize;
+      newConfig.smoothingTimeConstant = prevConfig.smoothingTimeConstant;
+      newConfig.createdAt = prevConfig.createdAt;
+      newConfig.updatedAt = new Date();
+      
       return newConfig;
     });
   }, []);
@@ -100,8 +113,18 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
   // テーマの更新
   const updateTheme = useCallback((theme: ColorTheme) => {
     setConfig(prevConfig => {
-      const newConfig = Object.assign(Object.create(Object.getPrototypeOf(prevConfig)), prevConfig);
-      newConfig.applyTheme(theme);
+      // 新しいインスタンスを作成
+      const newConfig = new VisualizerConfigEntity();
+      
+      // 現在の設定をコピー
+      newConfig.modes = prevConfig.modes.map(mode => ({ ...mode }));
+      newConfig.theme = { ...theme };
+      newConfig.sensitivity = prevConfig.sensitivity;
+      newConfig.fftSize = prevConfig.fftSize;
+      newConfig.smoothingTimeConstant = prevConfig.smoothingTimeConstant;
+      newConfig.createdAt = prevConfig.createdAt;
+      newConfig.updatedAt = new Date();
+      
       return newConfig;
     });
   }, []);
@@ -109,9 +132,18 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
   // 感度の更新
   const updateSensitivity = useCallback((sensitivity: number) => {
     setConfig(prevConfig => {
-      const newConfig = Object.assign(Object.create(Object.getPrototypeOf(prevConfig)), prevConfig);
+      // 新しいインスタンスを作成
+      const newConfig = new VisualizerConfigEntity();
+      
+      // 現在の設定をコピー
+      newConfig.modes = prevConfig.modes.map(mode => ({ ...mode }));
+      newConfig.theme = { ...prevConfig.theme };
       newConfig.sensitivity = Math.max(0.1, Math.min(3.0, sensitivity));
+      newConfig.fftSize = prevConfig.fftSize;
+      newConfig.smoothingTimeConstant = prevConfig.smoothingTimeConstant;
+      newConfig.createdAt = prevConfig.createdAt;
       newConfig.updatedAt = new Date();
+      
       return newConfig;
     });
   }, []);
@@ -122,9 +154,18 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
     const validFFTSize = validSizes.includes(fftSize) ? fftSize : 512;
 
     setConfig(prevConfig => {
-      const newConfig = Object.assign(Object.create(Object.getPrototypeOf(prevConfig)), prevConfig);
+      // 新しいインスタンスを作成
+      const newConfig = new VisualizerConfigEntity();
+      
+      // 現在の設定をコピー
+      newConfig.modes = prevConfig.modes.map(mode => ({ ...mode }));
+      newConfig.theme = { ...prevConfig.theme };
+      newConfig.sensitivity = prevConfig.sensitivity;
       newConfig.fftSize = validFFTSize;
+      newConfig.smoothingTimeConstant = prevConfig.smoothingTimeConstant;
+      newConfig.createdAt = prevConfig.createdAt;
       newConfig.updatedAt = new Date();
+      
       return newConfig;
     });
 
@@ -139,9 +180,18 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
     const validSmoothing = Math.max(0, Math.min(1, smoothing));
 
     setConfig(prevConfig => {
-      const newConfig = Object.assign(Object.create(Object.getPrototypeOf(prevConfig)), prevConfig);
+      // 新しいインスタンスを作成
+      const newConfig = new VisualizerConfigEntity();
+      
+      // 現在の設定をコピー
+      newConfig.modes = prevConfig.modes.map(mode => ({ ...mode }));
+      newConfig.theme = { ...prevConfig.theme };
+      newConfig.sensitivity = prevConfig.sensitivity;
+      newConfig.fftSize = prevConfig.fftSize;
       newConfig.smoothingTimeConstant = validSmoothing;
+      newConfig.createdAt = prevConfig.createdAt;
       newConfig.updatedAt = new Date();
+      
       return newConfig;
     });
 
