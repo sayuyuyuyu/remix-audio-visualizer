@@ -82,7 +82,7 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
           timeDomainData: staticTimeDomainData,
           bufferLength: 256,
           sampleRate: 44100,
-          bpmData: null
+          bpmData: undefined
         } as AudioAnalysisData;
       }
 
