@@ -3,6 +3,7 @@ import type { ColorTheme } from '../../domain/entities/VisualizerConfig';
 import { VisualizerConfigEntity } from '../../domain/entities/VisualizerConfig';
 import { VisualizerEngine } from '../../infrastructure/audio/VisualizerEngine';
 import { AudioRepositoryImpl } from '../../infrastructure/repositories/AudioRepositoryImpl';
+import type { AudioAnalysisData } from '../../infrastructure/audio/WebAudioService';
 
 export interface UseVisualizerReturn {
   config: VisualizerConfigEntity;
@@ -29,6 +30,7 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
   const engineRef = useRef<VisualizerEngine | null>(null);
   const animationIdRef = useRef<number | null>(null);
   const animateRef = useRef<() => void>();
+  const lastAudioDataRef = useRef<AudioAnalysisData | null>(null); // 最後のオーディオデータを保持
 
   // ビジュアライザーエンジンの初期化
   useEffect(() => {
@@ -52,6 +54,36 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
       if (audioRepository) {
         const webAudioService = audioRepository.getWebAudioService();
         audioData = webAudioService.getAnalysisData();
+        
+        // 音楽が再生中の場合は最後のオーディオデータを更新
+        if (isPlaying && audioData) {
+          lastAudioDataRef.current = audioData;
+        }
+      }
+
+      // 一時停止時でも最後のオーディオデータを使用、または静的なダミーデータを作成
+      let dataToUse = audioData || lastAudioDataRef.current;
+      
+      // 音楽が選択されているがデータがない場合は静的なダミーデータを作成
+      if (!dataToUse && audioRepository && !isPlaying) {
+        // 太陽系や波形でもある程度の形が見えるように、バリエーションのあるデータを作成
+        const staticFrequencyData = new Uint8Array(256);
+        const staticTimeDomainData = new Uint8Array(256);
+        
+        for (let i = 0; i < 256; i++) {
+          // 周波数データ: 低周波数から高周波数にかけて減衰するパターン
+          staticFrequencyData[i] = Math.max(10, 50 - (i * 0.15));
+          // 時間領域データ: 静的な正弦波パターン
+          staticTimeDomainData[i] = Math.floor(128 + 20 * Math.sin(i * 0.1));
+        }
+        
+        dataToUse = {
+          frequencyData: staticFrequencyData,
+          timeDomainData: staticTimeDomainData,
+          bufferLength: 256,
+          sampleRate: 44100,
+          bpmData: null
+        } as AudioAnalysisData;
       }
 
       const enabledModes = config.getEnabledModes();
@@ -63,7 +95,7 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
         isPlaying: isPlaying
       };
 
-      engineRef.current.render(enabledModes, audioData, options);
+      engineRef.current.render(enabledModes, dataToUse, options);
 
       // animationIdRefをチェックして継続するかを決定
       if (animationIdRef.current !== null) {

@@ -509,7 +509,8 @@ export class VisualizerEngine {
     this.clearCanvas();
 
     // 有効なビジュアライザーをレンダリング
-    if (audioData && options.isPlaying) {
+    if (audioData) {
+      // 音楽が選択されている場合はビジュアライザーを表示（再生中でなくても）
       enabledModes.forEach(mode => {
         const visualizer = this.visualizers.get(mode.id);
         if (visualizer) {
@@ -517,7 +518,7 @@ export class VisualizerEngine {
         }
       });
     } else {
-      // 音楽が再生されていない場合は待機状態の表示
+      // 音楽が選択されていない場合は待機状態の表示
       this.renderWaitingState(options);
     }
 
