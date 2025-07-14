@@ -61,11 +61,14 @@ export class WebAudioService {
     this.source.connect(this.gainNode);
     this.gainNode.connect(this.analyser);
     this.analyser.connect(this.audioContext.destination);
+    
   }
 
   // 音声解析データの取得
   getAnalysisData(): AudioAnalysisData | null {
-    if (!this.analyser) return null;
+    if (!this.analyser) {
+      return null;
+    }
 
     const bufferLength = this.analyser.frequencyBinCount;
     const frequencyData = new Uint8Array(bufferLength);

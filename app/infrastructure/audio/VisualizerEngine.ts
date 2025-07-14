@@ -454,6 +454,17 @@ export class VisualizerEngine {
   private canvas: HTMLCanvasElement | null = null;
   private ctx: CanvasRenderingContext2D | null = null;
 
+  // 待機状態表示用の定数
+  private static readonly WAITING_STATE_CIRCLE_RADIUS = 50;
+  private static readonly WAITING_STATE_STROKE_WIDTH = 3;
+  private static readonly WAITING_STATE_FONT_SIZE = 24;
+  private static readonly WAITING_STATE_FONT_FAMILY = 'Arial';
+  private static readonly WAITING_STATE_PULSE_FREQUENCY = 2;
+  private static readonly WAITING_STATE_PULSE_AMPLITUDE = 0.3;
+  private static readonly WAITING_STATE_PULSE_OFFSET = 0.7;
+  private static readonly WAITING_STATE_TIME_SCALE = 0.001;
+  private static readonly WAITING_STATE_OPACITY_SUFFIX = '80';
+
   constructor() {
     this.initializeVisualizers();
   }
@@ -474,7 +485,7 @@ export class VisualizerEngine {
   render(
     enabledModes: VisualizerMode[],
     audioData: AudioAnalysisData | null,
-    options: VisualizerOptions
+    options: VisualizerOptions & { isPlaying?: boolean }
   ): void {
     if (!this.ctx || !this.canvas) return;
 
@@ -482,13 +493,16 @@ export class VisualizerEngine {
     this.clearCanvas();
 
     // 有効なビジュアライザーをレンダリング
-    if (audioData) {
+    if (audioData && options.isPlaying) {
       enabledModes.forEach(mode => {
         const visualizer = this.visualizers.get(mode.id);
         if (visualizer) {
           visualizer.render(audioData, options);
         }
       });
+    } else {
+      // 音楽が再生されていない場合は待機状態の表示
+      this.renderWaitingState(options);
     }
 
     // センター画像の描画
@@ -507,6 +521,35 @@ export class VisualizerEngine {
 
     this.ctx.fillStyle = gradient;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+
+  private renderWaitingState(options: VisualizerOptions): void {
+    if (!this.ctx || !this.canvas) return;
+
+    const centerX = this.canvas.width / 2;
+    const centerY = this.canvas.height / 2;
+
+    // パルスエフェクト用の時間ベースの値
+    const time = Date.now() * VisualizerEngine.WAITING_STATE_TIME_SCALE;
+    const pulse = Math.sin(time * VisualizerEngine.WAITING_STATE_PULSE_FREQUENCY) * 
+                  VisualizerEngine.WAITING_STATE_PULSE_AMPLITUDE + 
+                  VisualizerEngine.WAITING_STATE_PULSE_OFFSET;
+
+    // 待機状態の円を描画
+    this.ctx.strokeStyle = options.theme.primary + VisualizerEngine.WAITING_STATE_OPACITY_SUFFIX;
+    this.ctx.lineWidth = VisualizerEngine.WAITING_STATE_STROKE_WIDTH;
+    this.ctx.globalAlpha = pulse;
+    this.ctx.beginPath();
+    this.ctx.arc(centerX, centerY, VisualizerEngine.WAITING_STATE_CIRCLE_RADIUS, 0, Math.PI * 2);
+    this.ctx.stroke();
+    this.ctx.globalAlpha = 1;
+
+    // 音楽ノートアイコンを描画
+    this.ctx.fillStyle = options.theme.primary;
+    this.ctx.font = `${VisualizerEngine.WAITING_STATE_FONT_SIZE}px ${VisualizerEngine.WAITING_STATE_FONT_FAMILY}`;
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText('♪', centerX, centerY);
   }
 
   private renderCenterImage(image: HTMLImageElement, options: VisualizerOptions): void {

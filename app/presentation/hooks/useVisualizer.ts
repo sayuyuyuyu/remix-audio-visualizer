@@ -23,10 +23,12 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
   const [config, setConfig] = useState(() => new VisualizerConfigEntity());
   const [isAnimating, setIsAnimating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<VisualizerEngine | null>(null);
   const animationIdRef = useRef<number | null>(null);
+  const animateRef = useRef<() => void>();
 
   // ビジュアライザーエンジンの初期化
   useEffect(() => {
@@ -39,42 +41,52 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
     };
   }, []);
 
+  // アニメーションループ - 安定したref版
+  const animate = useCallback(() => {
+    if (!engineRef.current || !canvasRef.current) {
+      return;
+    }
+
+    try {
+      let audioData = null;
+      if (audioRepository) {
+        const webAudioService = audioRepository.getWebAudioService();
+        audioData = webAudioService.getAnalysisData();
+      }
+
+      const enabledModes = config.getEnabledModes();
+      const options = {
+        width: canvasRef.current.width,
+        height: canvasRef.current.height,
+        theme: config.theme,
+        sensitivity: config.sensitivity,
+        isPlaying: isPlaying
+      };
+
+      engineRef.current.render(enabledModes, audioData, options);
+
+      // animationIdRefをチェックして継続するかを決定
+      if (animationIdRef.current !== null) {
+        animationIdRef.current = requestAnimationFrame(animateRef.current!);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ビジュアライザーエラーが発生しました');
+      setIsAnimating(false);
+      animationIdRef.current = null;
+    }
+  }, [audioRepository, config, isPlaying]);
+
+  // animateRefを最新の関数で更新
+  useEffect(() => {
+    animateRef.current = animate;
+  }, [animate]);
+
   // キャンバスの設定
   useEffect(() => {
     if (canvasRef.current && engineRef.current) {
       engineRef.current.setCanvas(canvasRef.current);
     }
   }, []);
-
-  // アニメーションループ
-  const animate = useCallback(() => {
-    if (!audioRepository || !engineRef.current || !canvasRef.current) {
-      animationIdRef.current = requestAnimationFrame(animate);
-      return;
-    }
-
-    try {
-      const webAudioService = audioRepository.getWebAudioService();
-      const audioData = webAudioService.getAnalysisData();
-
-      if (audioData) {
-        const enabledModes = config.getEnabledModes();
-        const options = {
-          width: canvasRef.current.width,
-          height: canvasRef.current.height,
-          theme: config.theme,
-          sensitivity: config.sensitivity
-        };
-
-        engineRef.current.render(enabledModes, audioData, options);
-      }
-
-      animationIdRef.current = requestAnimationFrame(animate);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'ビジュアライザーエラーが発生しました');
-      setIsAnimating(false);
-    }
-  }, [audioRepository, config]);
 
   // モードの切り替え
   const toggleMode = useCallback((modeId: string) => {
@@ -141,16 +153,16 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
 
   // アニメーション開始
   const startAnimation = useCallback(() => {
-    if (!isAnimating) {
+    if (animationIdRef.current === null && animateRef.current) {
       setIsAnimating(true);
-      animate();
+      animationIdRef.current = requestAnimationFrame(animateRef.current);
     }
-  }, [isAnimating, animate]);
+  }, []);
 
   // アニメーション停止
   const stopAnimation = useCallback(() => {
     setIsAnimating(false);
-    if (animationIdRef.current) {
+    if (animationIdRef.current !== null) {
       cancelAnimationFrame(animationIdRef.current);
       animationIdRef.current = null;
     }
@@ -165,16 +177,29 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
   useEffect(() => {
     if (audioRepository) {
       const cleanup = audioRepository.onPlayStateChange((playing) => {
-        if (playing) {
-          startAnimation();
-        } else {
-          stopAnimation();
+        setIsPlaying(playing);
+        // アニメーションは常に継続する（待機状態の表示のため）
+        if (animationIdRef.current === null && animateRef.current) {
+          setIsAnimating(true);
+          animationIdRef.current = requestAnimationFrame(animateRef.current);
         }
       });
 
       return cleanup;
     }
-  }, [audioRepository, startAnimation, stopAnimation]);
+  }, [audioRepository]);
+
+  // 初期アニメーション開始 - animateRef準備後に実行
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (canvasRef.current && engineRef.current && animationIdRef.current === null && animateRef.current) {
+        setIsAnimating(true);
+        animationIdRef.current = requestAnimationFrame(animateRef.current);
+      }
+    }, 0);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   return {
     config,

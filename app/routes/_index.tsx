@@ -90,8 +90,6 @@ export default function Index() {
     [visualizer, success]
   );
 
-  // デバッグ用ログ
-  console.log("isPlaying:", audio.isPlaying, "isAnimating:", visualizer.isAnimating);
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       {/* ヘッダー */}
@@ -111,6 +109,7 @@ export default function Index() {
         {/* ビジュアライザーキャンバス */}
         <Card variant="glass" padding="sm" className="overflow-hidden shadow-xl">
           <VisualizerCanvas
+            ref={visualizer.canvasRef}
             centerImage={centerImage}
             onCanvasReady={visualizer.startAnimation}
             hasAudioFile={!!audio.audioFile}
