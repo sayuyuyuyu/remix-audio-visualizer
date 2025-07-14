@@ -15,6 +15,7 @@ export class AudioRepositoryImpl implements AudioRepository {
 
   private setupAudioElementListeners() {
     if (!this.audioElement) return;
+    
     this.audioElement.addEventListener("play", () => {
       this.playStateCallbacks.forEach((cb) => cb(true));
     });
@@ -50,6 +51,7 @@ export class AudioRepositoryImpl implements AudioRepository {
         this.setupAudioElementListeners();
         this.webAudioService.connectAudioElement(this.audioElement);
       }
+      
       await this.webAudioService.play();
     } catch (error) {
       throw new Error(

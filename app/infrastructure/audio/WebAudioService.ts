@@ -65,10 +65,9 @@ export class WebAudioService {
 
   // 音声解析データの取得
   getAnalysisData(): AudioAnalysisData | null {
-    if (!this.analyser || !this.audioElement) return null;
-
-    // 音楽が再生されていない場合はnullを返す
-    if (this.audioElement.paused || this.audioElement.ended) return null;
+    if (!this.analyser) {
+      return null;
+    }
 
     const bufferLength = this.analyser.frequencyBinCount;
     const frequencyData = new Uint8Array(bufferLength);

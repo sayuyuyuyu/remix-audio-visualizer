@@ -485,7 +485,7 @@ export class VisualizerEngine {
   render(
     enabledModes: VisualizerMode[],
     audioData: AudioAnalysisData | null,
-    options: VisualizerOptions
+    options: VisualizerOptions & { isPlaying?: boolean }
   ): void {
     if (!this.ctx || !this.canvas) return;
 
@@ -493,7 +493,7 @@ export class VisualizerEngine {
     this.clearCanvas();
 
     // 有効なビジュアライザーをレンダリング
-    if (audioData) {
+    if (audioData && options.isPlaying) {
       enabledModes.forEach(mode => {
         const visualizer = this.visualizers.get(mode.id);
         if (visualizer) {

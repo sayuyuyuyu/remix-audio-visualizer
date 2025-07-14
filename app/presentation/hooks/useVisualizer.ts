@@ -23,6 +23,7 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
   const [config, setConfig] = useState(() => new VisualizerConfigEntity());
   const [isAnimating, setIsAnimating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<VisualizerEngine | null>(null);
@@ -52,12 +53,14 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
         audioData = webAudioService.getAnalysisData();
       }
 
+
       const enabledModes = config.getEnabledModes();
       const options = {
         width: canvasRef.current.width,
         height: canvasRef.current.height,
         theme: config.theme,
-        sensitivity: config.sensitivity
+        sensitivity: config.sensitivity,
+        isPlaying: isPlaying
       };
 
       engineRef.current.render(enabledModes, audioData, options);
@@ -69,7 +72,7 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
       setError(err instanceof Error ? err.message : 'ビジュアライザーエラーが発生しました');
       setIsAnimating(false);
     }
-  }, [audioRepository, config, isAnimating]);
+  }, [audioRepository, config, isAnimating, isPlaying]);
 
   // キャンバスの設定
   useEffect(() => {
@@ -172,16 +175,16 @@ export function useVisualizer(audioRepository?: AudioRepositoryImpl): UseVisuali
   useEffect(() => {
     if (audioRepository) {
       const cleanup = audioRepository.onPlayStateChange((playing) => {
-        if (playing) {
+        setIsPlaying(playing);
+        // アニメーションは常に継続する（待機状態の表示のため）
+        if (!isAnimating) {
           startAnimation();
-        } else {
-          stopAnimation();
         }
       });
 
       return cleanup;
     }
-  }, [audioRepository, startAnimation, stopAnimation]);
+  }, [audioRepository, startAnimation, isAnimating]);
 
   return {
     config,
