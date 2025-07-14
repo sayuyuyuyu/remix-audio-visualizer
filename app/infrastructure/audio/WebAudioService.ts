@@ -61,6 +61,12 @@ export class WebAudioService {
     this.source.connect(this.gainNode);
     this.gainNode.connect(this.analyser);
     this.analyser.connect(this.audioContext.destination);
+    
+    console.log('[WebAudioService] Audio element connected:', {
+      audioContextState: this.audioContext.state,
+      analyserFFTSize: this.analyser.fftSize,
+      audioElementSrc: audioElement.src.substring(0, 50) + '...'
+    });
   }
 
   // 音声解析データの取得

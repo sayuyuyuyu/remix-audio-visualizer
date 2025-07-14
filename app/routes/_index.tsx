@@ -109,6 +109,7 @@ export default function Index() {
         {/* ビジュアライザーキャンバス */}
         <Card variant="glass" padding="sm" className="overflow-hidden shadow-xl">
           <VisualizerCanvas
+            ref={visualizer.canvasRef}
             centerImage={centerImage}
             onCanvasReady={visualizer.startAnimation}
             hasAudioFile={!!audio.audioFile}
