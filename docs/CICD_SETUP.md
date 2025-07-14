@@ -20,19 +20,19 @@ GitHub リポジトリの Settings > Environments で `staging` 環境を作成�
 ### 必須シークレット
 
 #### Vercel デプロイ用
-```
+```env
 VERCEL_TOKEN=your_vercel_token_here
 VERCEL_ORG_ID=your_vercel_org_id
 VERCEL_PROJECT_ID=your_vercel_project_id
 ```
 
 #### Code Coverage 用
-```
+```env
 CODECOV_TOKEN=your_codecov_token_here
 ```
 
 #### Slack 通知用（オプション）
-```
+```env
 SLACK_WEBHOOK=your_slack_webhook_url
 ```
 
@@ -131,19 +131,19 @@ graph TD
 ### よくある問題
 
 #### 1. Vercelデプロイが失敗する
-```
+```text
 Error: Project not found
 ```
 **解決方法**: `VERCEL_PROJECT_ID` が正しく設定されているか確認
 
 #### 2. テストが失敗する
-```
+```text
 Error: Cannot find module
 ```
 **解決方法**: `npm ci` でクリーンインストールを実行
 
 #### 3. Playwright E2Eテストが失敗する
-```
+```text
 Error: Browser not found
 ```
 **解決方法**: `npx playwright install --with-deps` を実行

@@ -38,24 +38,13 @@ jobs:
       with:
         vercel-token: ${{ secrets.VERCEL_TOKEN }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        vercel-args: '--prod'
+        vercel-args: '--env-file=.env.staging'
         vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
         vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
         working-directory: ./
         alias-domains: |
           staging-remix-audio-visualizer.vercel.app
     
-    - name: Comment PR with staging URL
-      uses: actions/github-script@v7
-      if: github.event_name == 'pull_request'
-      with:
-        script: |
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: '🚀 Staging deployment ready at: https://staging-remix-audio-visualizer.vercel.app'
-          })
   
   deploy-production:
     name: Deploy to Production
