@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useBPM } from '../../../app/presentation/hooks/useBPM';
+import { BPMDetector } from '../../../app/infrastructure/audio/BPMDetector';
 
 // Mock BPMDetector
 vi.mock('../../../app/infrastructure/audio/BPMDetector', () => ({
@@ -10,17 +11,18 @@ vi.mock('../../../app/infrastructure/audio/BPMDetector', () => ({
   })),
 }));
 
+const mockBPMDetectorClass = vi.mocked(BPMDetector);
+
 describe('useBPM', () => {
   let mockBPMDetector: any;
   
   beforeEach(() => {
     vi.clearAllMocks();
-    const { BPMDetector } = require('../../../app/infrastructure/audio/BPMDetector');
     mockBPMDetector = {
       detectBPM: vi.fn(),
       cleanup: vi.fn(),
     };
-    BPMDetector.mockImplementation(() => mockBPMDetector);
+    mockBPMDetectorClass.mockImplementation(() => mockBPMDetector);
   });
 
   it('should initialize with default values', () => {

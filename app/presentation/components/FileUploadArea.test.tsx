@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { FileUploadArea } from './FileUploadArea';
+import { useDragAndDrop } from '../hooks/useFileUpload';
 
 // Mock the useDragAndDrop hook
 vi.mock('../hooks/useFileUpload', () => ({
@@ -13,6 +14,8 @@ vi.mock('../hooks/useFileUpload', () => ({
     }
   }))
 }));
+
+const mockUseDragAndDrop = vi.mocked(useDragAndDrop);
 
 const defaultProps = {
   type: 'audio' as const,
@@ -122,7 +125,6 @@ describe('FileUploadArea', () => {
   });
 
   it('should handle drag and drop props', () => {
-    const { useDragAndDrop } = require('../hooks/useFileUpload');
     const mockDragProps = {
       onDragOver: vi.fn(),
       onDragLeave: vi.fn(),
@@ -143,7 +145,6 @@ describe('FileUploadArea', () => {
   });
 
   it('should handle file drop through drag and drop', () => {
-    const { useDragAndDrop } = require('../hooks/useFileUpload');
     const onFileSelect = vi.fn();
     let dropCallback: (files: File[]) => void = () => {};
 
@@ -168,7 +169,6 @@ describe('FileUploadArea', () => {
   });
 
   it('should handle multiple files in drop (select first one)', () => {
-    const { useDragAndDrop } = require('../hooks/useFileUpload');
     const onFileSelect = vi.fn();
     let dropCallback: (files: File[]) => void = () => {};
 
@@ -194,7 +194,6 @@ describe('FileUploadArea', () => {
   });
 
   it('should not call onFileSelect when no files in drop', () => {
-    const { useDragAndDrop } = require('../hooks/useFileUpload');
     const onFileSelect = vi.fn();
     let dropCallback: (files: File[]) => void = () => {};
 
@@ -218,7 +217,6 @@ describe('FileUploadArea', () => {
   });
 
   it('should show dragging state', () => {
-    const { useDragAndDrop } = require('../hooks/useFileUpload');
 
     useDragAndDrop.mockReturnValue({
       isDragging: true,

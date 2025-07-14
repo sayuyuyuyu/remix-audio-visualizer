@@ -57,11 +57,11 @@ describe('Audio Workflow Integration Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockAudioContext.createMediaElementSource.mockReturnValue(mockMediaElementSource);
     mockAudioContext.createAnalyser.mockReturnValue(mockAnalyser);
     mockAudioContext.createGain.mockReturnValue(mockGain);
-    
+
     webAudioService = new WebAudioService();
     fileRepository = new FileRepositoryImpl();
     audioRepository = new AudioRepositoryImpl(webAudioService);
@@ -73,7 +73,7 @@ describe('Audio Workflow Integration Tests', () => {
     it('should upload and play audio file successfully', async () => {
       const file = new File(['test audio content'], 'test.mp3', { type: 'audio/mp3' });
       const mockURL = 'blob:test-url';
-      
+
       vi.spyOn(URL, 'createObjectURL').mockReturnValue(mockURL);
       mockMediaElementSource.mediaElement.play.mockResolvedValue(undefined);
 
@@ -85,7 +85,7 @@ describe('Audio Workflow Integration Tests', () => {
 
       // Step 2: Play audio
       await playAudioUseCase.play(audioFile);
-      
+
       expect(URL.createObjectURL).toHaveBeenCalledWith(file);
       expect(mockMediaElementSource.mediaElement.play).toHaveBeenCalled();
       expect(mockAudioContext.createMediaElementSource).toHaveBeenCalled();
@@ -101,12 +101,12 @@ describe('Audio Workflow Integration Tests', () => {
     it('should handle play audio failure after successful upload', async () => {
       const file = new File(['test audio content'], 'test.mp3', { type: 'audio/mp3' });
       const mockURL = 'blob:test-url';
-      
+
       vi.spyOn(URL, 'createObjectURL').mockReturnValue(mockURL);
       mockMediaElementSource.mediaElement.play.mockRejectedValue(new Error('Play failed'));
 
       const audioFile = await uploadFileUseCase.uploadAudioFile(file);
-      
+
       await expect(playAudioUseCase.play(audioFile)).rejects.toThrow('Play failed');
     });
   });
@@ -117,10 +117,10 @@ describe('Audio Workflow Integration Tests', () => {
     beforeEach(async () => {
       const file = new File(['test audio content'], 'test.mp3', { type: 'audio/mp3' });
       audioFile = await uploadFileUseCase.uploadAudioFile(file);
-      
+
       vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test-url');
       mockMediaElementSource.mediaElement.play.mockResolvedValue(undefined);
-      
+
       await playAudioUseCase.play(audioFile);
     });
 
@@ -153,7 +153,7 @@ describe('Audio Workflow Integration Tests', () => {
 
     it('should get audio duration', async () => {
       mockMediaElementSource.mediaElement.duration = 180;
-      
+
       const duration = await playAudioUseCase.getDuration();
       expect(duration).toBe(180);
     });
@@ -206,7 +206,7 @@ describe('Audio Workflow Integration Tests', () => {
       const validFile = new File(['valid audio'], 'test.mp3', { type: 'audio/mp3' });
 
       await expect(uploadFileUseCase.uploadAudioFile(invalidFile)).rejects.toThrow();
-      
+
       const audioFile = await uploadFileUseCase.uploadAudioFile(validFile);
       expect(audioFile).toBeInstanceOf(AudioFileEntity);
     });
@@ -227,7 +227,7 @@ describe('Audio Workflow Integration Tests', () => {
       mockMediaElementSource.mediaElement.play.mockRejectedValue(new Error('Play failed'));
 
       await expect(playAudioUseCase.play(audioFile)).rejects.toThrow('Play failed');
-      
+
       // Should be able to try again
       mockMediaElementSource.mediaElement.play.mockResolvedValue(undefined);
       await expect(playAudioUseCase.play(audioFile)).resolves.not.toThrow();
@@ -238,7 +238,7 @@ describe('Audio Workflow Integration Tests', () => {
     it('should properly manage object URLs', async () => {
       const file = new File(['test audio content'], 'test.mp3', { type: 'audio/mp3' });
       const audioFile = await uploadFileUseCase.uploadAudioFile(file);
-      
+
       const mockURL = 'blob:test-url';
       vi.spyOn(URL, 'createObjectURL').mockReturnValue(mockURL);
       vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});

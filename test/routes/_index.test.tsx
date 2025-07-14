@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { createRemixStub } from '@remix-run/testing';
 import Index from '../../app/routes/_index';
 
 // Mock all the presentation components
@@ -96,32 +95,24 @@ vi.mock('../../app/presentation/hooks/useVisualizer', () => ({
 }));
 
 describe('Index Route', () => {
-  let RemixStub: any;
-
   beforeEach(() => {
     vi.clearAllMocks();
-    RemixStub = createRemixStub([
-      {
-        path: '/',
-        Component: Index,
-      },
-    ]);
   });
 
   it('should render the main application title', () => {
-    render(<RemixStub />);
+    render(<Index />);
     
     expect(screen.getByText('Audio Visualizer')).toBeInTheDocument();
   });
 
   it('should render the subtitle', () => {
-    render(<RemixStub />);
+    render(<Index />);
     
     expect(screen.getByText('オーディオファイルをアップロードして、リアルタイムビジュアライザーを楽しもう')).toBeInTheDocument();
   });
 
   it('should render all main components', () => {
-    render(<RemixStub />);
+    render(<Index />);
     
     expect(screen.getByTestId('file-upload-area')).toBeInTheDocument();
     expect(screen.getByTestId('audio-controls')).toBeInTheDocument();
@@ -131,7 +122,7 @@ describe('Index Route', () => {
   });
 
   it('should handle file upload', async () => {
-    render(<RemixStub />);
+    render(<Index />);
     
     const uploadButton = screen.getByText('Upload File');
     fireEvent.click(uploadButton);
@@ -142,7 +133,7 @@ describe('Index Route', () => {
   });
 
   it('should handle visualizer config changes', () => {
-    render(<RemixStub />);
+    render(<Index />);
     
     const changeModeButton = screen.getByText('Change Mode');
     fireEvent.click(changeModeButton);
@@ -151,7 +142,7 @@ describe('Index Route', () => {
   });
 
   it('should handle theme changes through overlay', () => {
-    render(<RemixStub />);
+    render(<Index />);
     
     const changeThemeButton = screen.getByText('Change Theme');
     fireEvent.click(changeThemeButton);
@@ -161,14 +152,14 @@ describe('Index Route', () => {
   });
 
   it('should show settings toggle button', () => {
-    render(<RemixStub />);
+    render(<Index />);
     
     const settingsButton = screen.getByText('設定');
     expect(settingsButton).toBeInTheDocument();
   });
 
   it('should toggle settings overlay', () => {
-    render(<RemixStub />);
+    render(<Index />);
     
     const settingsButton = screen.getByText('設定');
     const overlay = screen.getByTestId('visualizer-overlay');
@@ -186,7 +177,7 @@ describe('Index Route', () => {
   });
 
   it('should handle keyboard navigation', () => {
-    render(<RemixStub />);
+    render(<Index />);
     
     const settingsButton = screen.getByText('設定');
     fireEvent.keyDown(settingsButton, { key: 'Enter' });
@@ -196,7 +187,7 @@ describe('Index Route', () => {
   });
 
   it('should handle spacebar for settings toggle', () => {
-    render(<RemixStub />);
+    render(<Index />);
     
     const settingsButton = screen.getByText('設定');
     fireEvent.keyDown(settingsButton, { key: ' ' });
@@ -206,7 +197,7 @@ describe('Index Route', () => {
   });
 
   it('should maintain proper layout structure', () => {
-    render(<RemixStub />);
+    render(<Index />);
     
     const mainContainer = screen.getByRole('main');
     expect(mainContainer).toBeInTheDocument();
@@ -214,7 +205,7 @@ describe('Index Route', () => {
   });
 
   it('should handle center image upload', async () => {
-    render(<RemixStub />);
+    render(<Index />);
     
     // Simulate selecting an image file
     const uploadButton = screen.getByText('Upload File');
@@ -226,21 +217,21 @@ describe('Index Route', () => {
   });
 
   it('should display error states properly', () => {
-    render(<RemixStub />);
+    render(<Index />);
     
     // The error handling would be tested through the mocked components
     expect(screen.getByTestId('file-upload-area')).toBeInTheDocument();
   });
 
   it('should handle loading states', () => {
-    render(<RemixStub />);
+    render(<Index />);
     
     // Loading state would be visible through the isUploading prop
     expect(screen.getByTestId('file-upload-area')).toBeInTheDocument();
   });
 
   it('should have proper accessibility attributes', () => {
-    render(<RemixStub />);
+    render(<Index />);
     
     const mainHeading = screen.getByRole('heading', { level: 1 });
     expect(mainHeading).toHaveTextContent('Audio Visualizer');
@@ -250,7 +241,7 @@ describe('Index Route', () => {
   });
 
   it('should handle component state synchronization', () => {
-    render(<RemixStub />);
+    render(<Index />);
     
     // Test that all components receive the correct props
     expect(screen.getByText('Mode: circular')).toBeInTheDocument();
@@ -258,14 +249,14 @@ describe('Index Route', () => {
   });
 
   it('should handle mobile responsive design', () => {
-    render(<RemixStub />);
+    render(<Index />);
     
     const container = screen.getByRole('main');
     expect(container).toHaveClass('p-4', 'md:p-8');
   });
 
   it('should handle multiple file uploads', async () => {
-    render(<RemixStub />);
+    render(<Index />);
     
     const uploadButton = screen.getByText('Upload File');
     
@@ -283,7 +274,7 @@ describe('Index Route', () => {
   });
 
   it('should handle rapid config changes', () => {
-    render(<RemixStub />);
+    render(<Index />);
     
     const changeModeButton = screen.getByText('Change Mode');
     const changeThemeButton = screen.getByText('Change Theme');
@@ -297,7 +288,7 @@ describe('Index Route', () => {
   });
 
   it('should handle component unmounting gracefully', () => {
-    const { unmount } = render(<RemixStub />);
+    const { unmount } = render(<Index />);
     
     expect(() => unmount()).not.toThrow();
   });

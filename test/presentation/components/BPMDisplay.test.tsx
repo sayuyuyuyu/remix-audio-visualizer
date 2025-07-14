@@ -1,20 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { BPMDisplay } from '../../../app/presentation/components/BPMDisplay';
+import { useBPM } from '../../../app/presentation/hooks/useBPM';
 
 // Mock useBPM hook
 vi.mock('../../../app/presentation/hooks/useBPM', () => ({
   useBPM: vi.fn(),
 }));
 
-describe('BPMDisplay', () => {
-  let mockUseBPM: any;
+const mockUseBPM = vi.mocked(useBPM);
 
+describe('BPMDisplay', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseBPM = vi.fn();
-    const { useBPM } = require('../../../app/presentation/hooks/useBPM');
-    useBPM.mockImplementation(mockUseBPM);
   });
 
   it('should render BPM value when detected', () => {
