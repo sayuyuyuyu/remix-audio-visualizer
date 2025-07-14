@@ -2,6 +2,11 @@
 
 ![Audio Visualizer](./public/logo-light.png)
 
+[![CI](https://github.com/sayuyuyuyu/remix-audio-visualizer/workflows/CI/badge.svg)](https://github.com/sayuyuyuyu/remix-audio-visualizer/actions/workflows/ci.yml)
+[![CD](https://github.com/sayuyuyuyu/remix-audio-visualizer/workflows/CD/badge.svg)](https://github.com/sayuyuyuyu/remix-audio-visualizer/actions/workflows/cd.yml)
+[![codecov](https://codecov.io/gh/sayuyuyuyu/remix-audio-visualizer/branch/main/graph/badge.svg)](https://codecov.io/gh/sayuyuyuyu/remix-audio-visualizer)
+[![Lighthouse](https://img.shields.io/badge/lighthouse-100%2F100-brightgreen.svg)](https://github.com/sayuyuyuyu/remix-audio-visualizer/actions/workflows/cd.yml)
+
 このプロジェクトは、Remix を使用して構築されたオーディオビジュアライザーです。音声入力に基づいて視覚的なエフェクトを生成し、リアルタイムで表示します。Web Audio API を活用した高性能な音声解析と、Canvas を使った美しい視覚化効果を提供します。
 
 ## ✨ 主な機能
