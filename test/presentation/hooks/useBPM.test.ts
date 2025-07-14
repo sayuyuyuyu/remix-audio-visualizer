@@ -1,229 +1,214 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useBPM } from '../../../app/presentation/hooks/useBPM';
-import { BPMDetector } from '../../../app/infrastructure/audio/BPMDetector';
+import type { AudioRepositoryImpl } from '../../../app/infrastructure/repositories/AudioRepositoryImpl';
+import type { BPMAnalysisData } from '../../../app/infrastructure/audio/WebAudioService';
 
-// Mock BPMDetector
-vi.mock('../../../app/infrastructure/audio/BPMDetector', () => ({
-  BPMDetector: vi.fn().mockImplementation(() => ({
-    detectBPM: vi.fn(),
-    cleanup: vi.fn(),
-  })),
-}));
+// Mock requestAnimationFrame and cancelAnimationFrame
+const mockRequestAnimationFrame = vi.fn();
+const mockCancelAnimationFrame = vi.fn();
 
-const mockBPMDetectorClass = vi.mocked(BPMDetector);
+Object.defineProperty(global, 'requestAnimationFrame', {
+  value: mockRequestAnimationFrame
+});
+
+Object.defineProperty(global, 'cancelAnimationFrame', {
+  value: mockCancelAnimationFrame
+});
 
 describe('useBPM', () => {
-  let mockBPMDetector: any;
-  
+  let mockAudioRepository: AudioRepositoryImpl;
+  let mockBPMData: BPMAnalysisData;
+
   beforeEach(() => {
     vi.clearAllMocks();
-    mockBPMDetector = {
-      detectBPM: vi.fn(),
-      cleanup: vi.fn(),
+
+    mockBPMData = {
+      currentBPM: 120,
+      confidence: 0.85,
+      onsets: [0.5, 1.0, 1.5],
+      stability: 0.9
     };
-    mockBPMDetectorClass.mockImplementation(() => mockBPMDetector);
+
+    mockAudioRepository = {
+      getAudioAnalysisData: vi.fn().mockReturnValue({
+        bpmData: mockBPMData
+      }),
+      resetBPMDetector: vi.fn()
+    } as any;
+
+    // Mock animation frame to return sequential IDs
+    let frameId = 1;
+    mockRequestAnimationFrame.mockImplementation((callback) => {
+      setTimeout(callback, 16); // Simulate 60fps
+      return frameId++;
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('should initialize with default values', () => {
-    const { result } = renderHook(() => useBPM());
+    const { result } = renderHook(() => useBPM(null, false));
 
-    expect(result.current.bpm).toBe(0);
+    expect(result.current.bpmData).toBeNull();
     expect(result.current.isDetecting).toBe(false);
-    expect(result.current.confidence).toBe(0);
+    expect(result.current.error).toBeNull();
+    expect(result.current.resetDetection).toBeDefined();
+    expect(result.current.clearError).toBeDefined();
   });
 
-  it('should start BPM detection successfully', async () => {
-    const mockAnalyser = {
-      fftSize: 256,
-      frequencyBinCount: 128,
-      getByteFrequencyData: vi.fn(),
-    };
-    
-    mockBPMDetector.detectBPM.mockResolvedValue({ bpm: 120, confidence: 0.8 });
-
-    const { result } = renderHook(() => useBPM());
-
-    await act(async () => {
-      await result.current.startDetection(mockAnalyser as any);
-    });
+  it('should start detection when audio repository is available and playing', () => {
+    const { result } = renderHook(() => useBPM(mockAudioRepository, true));
 
     expect(result.current.isDetecting).toBe(true);
-    expect(mockBPMDetector.detectBPM).toHaveBeenCalledWith(mockAnalyser);
+    expect(mockRequestAnimationFrame).toHaveBeenCalled();
   });
 
-  it('should handle BPM detection success', async () => {
-    const mockAnalyser = {
-      fftSize: 256,
-      frequencyBinCount: 128,
-      getByteFrequencyData: vi.fn(),
-    };
-    
-    mockBPMDetector.detectBPM.mockResolvedValue({ bpm: 128, confidence: 0.9 });
-
-    const { result } = renderHook(() => useBPM());
-
-    await act(async () => {
-      await result.current.startDetection(mockAnalyser as any);
-    });
-
-    expect(result.current.bpm).toBe(128);
-    expect(result.current.confidence).toBe(0.9);
-    expect(result.current.isDetecting).toBe(false);
-  });
-
-  it('should handle BPM detection failure', async () => {
-    const mockAnalyser = {
-      fftSize: 256,
-      frequencyBinCount: 128,
-      getByteFrequencyData: vi.fn(),
-    };
-    
-    mockBPMDetector.detectBPM.mockRejectedValue(new Error('Detection failed'));
-
-    const { result } = renderHook(() => useBPM());
-
-    await act(async () => {
-      await result.current.startDetection(mockAnalyser as any);
-    });
-
-    expect(result.current.bpm).toBe(0);
-    expect(result.current.confidence).toBe(0);
-    expect(result.current.isDetecting).toBe(false);
-  });
-
-  it('should stop BPM detection', () => {
-    const { result } = renderHook(() => useBPM());
-
-    act(() => {
-      result.current.stopDetection();
-    });
+  it('should not start detection when not playing', () => {
+    const { result } = renderHook(() => useBPM(mockAudioRepository, false));
 
     expect(result.current.isDetecting).toBe(false);
-    expect(result.current.bpm).toBe(0);
-    expect(result.current.confidence).toBe(0);
+    expect(mockRequestAnimationFrame).not.toHaveBeenCalled();
   });
 
-  it('should handle null analyser', async () => {
-    const { result } = renderHook(() => useBPM());
-
-    await act(async () => {
-      await result.current.startDetection(null);
-    });
+  it('should not start detection when no audio repository', () => {
+    const { result } = renderHook(() => useBPM(null, true));
 
     expect(result.current.isDetecting).toBe(false);
-    expect(result.current.bpm).toBe(0);
-    expect(result.current.confidence).toBe(0);
+    expect(mockRequestAnimationFrame).not.toHaveBeenCalled();
   });
 
-  it('should not start detection if already detecting', async () => {
-    const mockAnalyser = {
-      fftSize: 256,
-      frequencyBinCount: 128,
-      getByteFrequencyData: vi.fn(),
-    };
-    
-    mockBPMDetector.detectBPM.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
+  it('should update BPM data when available', async () => {
+    const { result } = renderHook(() => useBPM(mockAudioRepository, true));
 
-    const { result } = renderHook(() => useBPM());
+    // Wait for animation frame to execute
+    await vi.runOnlyPendingTimersAsync();
 
-    act(() => {
-      result.current.startDetection(mockAnalyser as any);
+    expect(mockAudioRepository.getAudioAnalysisData).toHaveBeenCalled();
+    expect(result.current.bpmData).toEqual(mockBPMData);
+  });
+
+  it('should handle BPM data update errors', async () => {
+    vi.mocked(mockAudioRepository.getAudioAnalysisData).mockImplementation(() => {
+      throw new Error('BPM analysis failed');
     });
+
+    const { result } = renderHook(() => useBPM(mockAudioRepository, true));
+
+    // Wait for animation frame to execute
+    await vi.runOnlyPendingTimersAsync();
+
+    expect(result.current.error).toContain('BPM analysis failed');
+  });
+
+  it('should stop detection when playing changes to false', () => {
+    const { result, rerender } = renderHook(
+      ({ isPlaying }) => useBPM(mockAudioRepository, isPlaying),
+      { initialProps: { isPlaying: true } }
+    );
 
     expect(result.current.isDetecting).toBe(true);
 
-    await act(async () => {
-      await result.current.startDetection(mockAnalyser as any);
-    });
+    rerender({ isPlaying: false });
 
-    expect(mockBPMDetector.detectBPM).toHaveBeenCalledTimes(1);
+    expect(result.current.isDetecting).toBe(false);
+    expect(mockCancelAnimationFrame).toHaveBeenCalled();
   });
 
-  it('should cleanup on unmount', () => {
-    const { unmount } = renderHook(() => useBPM());
+  it('should reset detection when resetDetection is called', () => {
+    const { result } = renderHook(() => useBPM(mockAudioRepository, false));
+
+    // First set some data
+    act(() => {
+      result.current.resetDetection();
+    });
+
+    expect(result.current.bpmData).toBeNull();
+    expect(result.current.error).toBeNull();
+    expect(mockAudioRepository.resetBPMDetector).toHaveBeenCalled();
+  });
+
+  it('should handle resetDetection errors', () => {
+    vi.mocked(mockAudioRepository.resetBPMDetector).mockImplementation(() => {
+      throw new Error('Reset failed');
+    });
+
+    const { result } = renderHook(() => useBPM(mockAudioRepository, false));
+
+    act(() => {
+      result.current.resetDetection();
+    });
+
+    expect(result.current.error).toContain('Reset failed');
+  });
+
+  it('should clear error when clearError is called', async () => {
+    // First set an error
+    vi.mocked(mockAudioRepository.getAudioAnalysisData).mockImplementation(() => {
+      throw new Error('Test error');
+    });
+
+    const { result } = renderHook(() => useBPM(mockAudioRepository, true));
+
+    // Wait for error to be set
+    await vi.runOnlyPendingTimersAsync();
+
+    expect(result.current.error).toBeTruthy();
+
+    // Clear the error
+    act(() => {
+      result.current.clearError();
+    });
+
+    expect(result.current.error).toBeNull();
+  });
+
+  it('should handle missing BPM data gracefully', async () => {
+    vi.mocked(mockAudioRepository.getAudioAnalysisData).mockReturnValue({
+      bpmData: null
+    } as any);
+
+    const { result } = renderHook(() => useBPM(mockAudioRepository, true));
+
+    // Wait for animation frame to execute
+    await vi.runOnlyPendingTimersAsync();
+
+    expect(result.current.bpmData).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
+
+  it('should reset detection when audio repository changes to null', () => {
+    const { result, rerender } = renderHook(
+      ({ audioRepo }: { audioRepo: AudioRepositoryImpl | null }) => useBPM(audioRepo, false),
+      { initialProps: { audioRepo: mockAudioRepository } }
+    );
+
+    // Change to null
+    rerender({ audioRepo: null });
+
+    expect(result.current.bpmData).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
+
+  it('should cleanup animation frame on unmount', () => {
+    const { unmount } = renderHook(() => useBPM(mockAudioRepository, true));
 
     unmount();
 
-    expect(mockBPMDetector.cleanup).toHaveBeenCalled();
+    expect(mockCancelAnimationFrame).toHaveBeenCalled();
   });
 
-  it('should handle rapid start/stop cycles', async () => {
-    const mockAnalyser = {
-      fftSize: 256,
-      frequencyBinCount: 128,
-      getByteFrequencyData: vi.fn(),
-    };
-    
-    mockBPMDetector.detectBPM.mockResolvedValue({ bpm: 120, confidence: 0.8 });
+  it('should handle no audio analysis data', async () => {
+    vi.mocked(mockAudioRepository.getAudioAnalysisData).mockReturnValue(null);
 
-    const { result } = renderHook(() => useBPM());
+    const { result } = renderHook(() => useBPM(mockAudioRepository, true));
 
-    await act(async () => {
-      await result.current.startDetection(mockAnalyser as any);
-      result.current.stopDetection();
-      await result.current.startDetection(mockAnalyser as any);
-    });
+    // Wait for animation frame to execute
+    await vi.runOnlyPendingTimersAsync();
 
-    expect(result.current.bpm).toBe(120);
-    expect(result.current.confidence).toBe(0.8);
-  });
-
-  it('should handle detection with low confidence', async () => {
-    const mockAnalyser = {
-      fftSize: 256,
-      frequencyBinCount: 128,
-      getByteFrequencyData: vi.fn(),
-    };
-    
-    mockBPMDetector.detectBPM.mockResolvedValue({ bpm: 100, confidence: 0.3 });
-
-    const { result } = renderHook(() => useBPM());
-
-    await act(async () => {
-      await result.current.startDetection(mockAnalyser as any);
-    });
-
-    expect(result.current.bpm).toBe(100);
-    expect(result.current.confidence).toBe(0.3);
-    expect(result.current.isDetecting).toBe(false);
-  });
-
-  it('should handle detection with high BPM', async () => {
-    const mockAnalyser = {
-      fftSize: 256,
-      frequencyBinCount: 128,
-      getByteFrequencyData: vi.fn(),
-    };
-    
-    mockBPMDetector.detectBPM.mockResolvedValue({ bpm: 200, confidence: 0.9 });
-
-    const { result } = renderHook(() => useBPM());
-
-    await act(async () => {
-      await result.current.startDetection(mockAnalyser as any);
-    });
-
-    expect(result.current.bpm).toBe(200);
-    expect(result.current.confidence).toBe(0.9);
-  });
-
-  it('should handle detection with zero BPM', async () => {
-    const mockAnalyser = {
-      fftSize: 256,
-      frequencyBinCount: 128,
-      getByteFrequencyData: vi.fn(),
-    };
-    
-    mockBPMDetector.detectBPM.mockResolvedValue({ bpm: 0, confidence: 0 });
-
-    const { result } = renderHook(() => useBPM());
-
-    await act(async () => {
-      await result.current.startDetection(mockAnalyser as any);
-    });
-
-    expect(result.current.bpm).toBe(0);
-    expect(result.current.confidence).toBe(0);
+    expect(result.current.bpmData).toBeNull();
+    expect(result.current.error).toBeNull();
   });
 });

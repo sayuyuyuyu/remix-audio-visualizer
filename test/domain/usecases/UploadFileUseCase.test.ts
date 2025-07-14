@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { UploadFileUseCase } from '../../../app/domain/usecases/UploadFileUseCase';
-import { FileRepository } from '../../../app/domain/repositories/FileRepository';
+import type { FileRepository } from '../../../app/domain/repositories/FileRepository';
 import { AudioFileEntity } from '../../../app/domain/entities/AudioFile';
 import { CenterImageEntity } from '../../../app/domain/entities/CenterImage';
 
@@ -10,10 +10,15 @@ describe('UploadFileUseCase', () => {
 
   beforeEach(() => {
     mockFileRepository = {
-      uploadFile: vi.fn(),
+      uploadAudioFile: vi.fn(),
+      uploadImageFile: vi.fn(),
+      validateAudioFile: vi.fn(),
+      validateImageFile: vi.fn(),
+      generateImagePreview: vi.fn(),
       deleteFile: vi.fn(),
-      getFile: vi.fn(),
-      validateFile: vi.fn(),
+      getFileInfo: vi.fn(),
+      getSupportedAudioFormats: vi.fn(),
+      getSupportedImageFormats: vi.fn(),
     };
     uploadFileUseCase = new UploadFileUseCase(mockFileRepository);
   });
@@ -21,172 +26,120 @@ describe('UploadFileUseCase', () => {
   describe('uploadAudioFile', () => {
     it('should upload audio file successfully', async () => {
       const file = new File(['test'], 'test.mp3', { type: 'audio/mp3' });
-      const audioFile = new AudioFileEntity(file, 'test.mp3', 1000, 'audio/mp3');
+      const audioFile = new AudioFileEntity(file);
       
-      vi.mocked(mockFileRepository.validateFile).mockResolvedValue(true);
-      vi.mocked(mockFileRepository.uploadFile).mockResolvedValue(audioFile);
+      vi.mocked(mockFileRepository.validateAudioFile).mockResolvedValue(true);
+      vi.mocked(mockFileRepository.uploadAudioFile).mockResolvedValue(audioFile);
 
-      const result = await uploadFileUseCase.uploadAudioFile(file);
+      const result = await uploadFileUseCase.uploadAudioFile({ file });
 
-      expect(mockFileRepository.validateFile).toHaveBeenCalledWith(file);
-      expect(mockFileRepository.uploadFile).toHaveBeenCalledWith(file);
-      expect(result).toBe(audioFile);
+      expect(mockFileRepository.validateAudioFile).toHaveBeenCalledWith(file);
+      expect(mockFileRepository.uploadAudioFile).toHaveBeenCalledWith(file);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(audioFile);
     });
 
     it('should handle validation failure', async () => {
       const file = new File(['test'], 'test.mp3', { type: 'audio/mp3' });
       
-      vi.mocked(mockFileRepository.validateFile).mockResolvedValue(false);
+      vi.mocked(mockFileRepository.validateAudioFile).mockResolvedValue(false);
 
-      await expect(uploadFileUseCase.uploadAudioFile(file)).rejects.toThrow('File validation failed');
-      expect(mockFileRepository.uploadFile).not.toHaveBeenCalled();
+      const result = await uploadFileUseCase.uploadAudioFile({ file });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('サポートされていない');
+      expect(mockFileRepository.uploadAudioFile).not.toHaveBeenCalled();
     });
 
     it('should handle upload errors', async () => {
       const file = new File(['test'], 'test.mp3', { type: 'audio/mp3' });
       
-      vi.mocked(mockFileRepository.validateFile).mockResolvedValue(true);
-      vi.mocked(mockFileRepository.uploadFile).mockRejectedValue(new Error('Upload failed'));
+      vi.mocked(mockFileRepository.validateAudioFile).mockResolvedValue(true);
+      vi.mocked(mockFileRepository.uploadAudioFile).mockRejectedValue(new Error('Upload failed'));
 
-      await expect(uploadFileUseCase.uploadAudioFile(file)).rejects.toThrow('Upload failed');
+      const result = await uploadFileUseCase.uploadAudioFile({ file });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('Upload failed');
     });
 
-    it('should handle null file', async () => {
-      await expect(uploadFileUseCase.uploadAudioFile(null as any)).rejects.toThrow('File is required');
+    it('should reject invalid audio files', async () => {
+      const file = new File(['test'], 'test.txt', { type: 'text/plain' });
+      const audioFile = new AudioFileEntity(file);
+      
+      vi.mocked(mockFileRepository.validateAudioFile).mockResolvedValue(true);
+      vi.mocked(mockFileRepository.uploadAudioFile).mockResolvedValue(audioFile);
+
+      const result = await uploadFileUseCase.uploadAudioFile({ file });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('無効なオーディオファイル');
     });
   });
 
   describe('uploadImageFile', () => {
     it('should upload image file successfully', async () => {
       const file = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
-      const centerImage = new CenterImageEntity(file, 'test.jpg', 1000, 'image/jpeg');
+      const imageFile = new CenterImageEntity(file);
       
-      vi.mocked(mockFileRepository.validateFile).mockResolvedValue(true);
-      vi.mocked(mockFileRepository.uploadFile).mockResolvedValue(centerImage);
+      vi.mocked(mockFileRepository.validateImageFile).mockResolvedValue(true);
+      vi.mocked(mockFileRepository.uploadImageFile).mockResolvedValue(imageFile);
 
-      const result = await uploadFileUseCase.uploadImageFile(file);
+      const result = await uploadFileUseCase.uploadImageFile({ file });
 
-      expect(mockFileRepository.validateFile).toHaveBeenCalledWith(file);
-      expect(mockFileRepository.uploadFile).toHaveBeenCalledWith(file);
-      expect(result).toBe(centerImage);
+      expect(mockFileRepository.validateImageFile).toHaveBeenCalledWith(file);
+      expect(mockFileRepository.uploadImageFile).toHaveBeenCalledWith(file);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(imageFile);
     });
 
     it('should handle validation failure', async () => {
       const file = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
       
-      vi.mocked(mockFileRepository.validateFile).mockResolvedValue(false);
+      vi.mocked(mockFileRepository.validateImageFile).mockResolvedValue(false);
 
-      await expect(uploadFileUseCase.uploadImageFile(file)).rejects.toThrow('File validation failed');
-      expect(mockFileRepository.uploadFile).not.toHaveBeenCalled();
+      const result = await uploadFileUseCase.uploadImageFile({ file });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('サポートされていない');
+      expect(mockFileRepository.uploadImageFile).not.toHaveBeenCalled();
     });
 
     it('should handle upload errors', async () => {
       const file = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
       
-      vi.mocked(mockFileRepository.validateFile).mockResolvedValue(true);
-      vi.mocked(mockFileRepository.uploadFile).mockRejectedValue(new Error('Upload failed'));
+      vi.mocked(mockFileRepository.validateImageFile).mockResolvedValue(true);
+      vi.mocked(mockFileRepository.uploadImageFile).mockRejectedValue(new Error('Upload failed'));
 
-      await expect(uploadFileUseCase.uploadImageFile(file)).rejects.toThrow('Upload failed');
+      const result = await uploadFileUseCase.uploadImageFile({ file });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('Upload failed');
     });
 
-    it('should handle null file', async () => {
-      await expect(uploadFileUseCase.uploadImageFile(null as any)).rejects.toThrow('File is required');
+    it('should reject invalid image files', async () => {
+      const file = new File(['test'], 'test.txt', { type: 'text/plain' });
+      const imageFile = new CenterImageEntity(file);
+      
+      vi.mocked(mockFileRepository.validateImageFile).mockResolvedValue(true);
+      vi.mocked(mockFileRepository.uploadImageFile).mockResolvedValue(imageFile);
+
+      const result = await uploadFileUseCase.uploadImageFile({ file });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('無効な画像ファイル');
     });
   });
 
-  describe('deleteFile', () => {
-    it('should delete file successfully', async () => {
-      const fileId = 'test-file-id';
+  describe('getSupportedFormats', () => {
+    it('should return supported formats', () => {
+      vi.mocked(mockFileRepository.getSupportedAudioFormats).mockReturnValue(['audio/mp3', 'audio/wav']);
+      vi.mocked(mockFileRepository.getSupportedImageFormats).mockReturnValue(['image/jpeg', 'image/png']);
 
-      await uploadFileUseCase.deleteFile(fileId);
+      const result = uploadFileUseCase.getSupportedFormats();
 
-      expect(mockFileRepository.deleteFile).toHaveBeenCalledWith(fileId);
-    });
-
-    it('should handle delete errors', async () => {
-      const fileId = 'test-file-id';
-      
-      vi.mocked(mockFileRepository.deleteFile).mockRejectedValue(new Error('Delete failed'));
-
-      await expect(uploadFileUseCase.deleteFile(fileId)).rejects.toThrow('Delete failed');
-    });
-
-    it('should handle null fileId', async () => {
-      await expect(uploadFileUseCase.deleteFile(null as any)).rejects.toThrow('File ID is required');
-    });
-
-    it('should handle empty fileId', async () => {
-      await expect(uploadFileUseCase.deleteFile('')).rejects.toThrow('File ID is required');
-    });
-  });
-
-  describe('getFile', () => {
-    it('should get file successfully', async () => {
-      const fileId = 'test-file-id';
-      const audioFile = new AudioFileEntity(
-        new File(['test'], 'test.mp3', { type: 'audio/mp3' }),
-        'test.mp3',
-        1000,
-        'audio/mp3'
-      );
-      
-      vi.mocked(mockFileRepository.getFile).mockResolvedValue(audioFile);
-
-      const result = await uploadFileUseCase.getFile(fileId);
-
-      expect(mockFileRepository.getFile).toHaveBeenCalledWith(fileId);
-      expect(result).toBe(audioFile);
-    });
-
-    it('should handle get file errors', async () => {
-      const fileId = 'test-file-id';
-      
-      vi.mocked(mockFileRepository.getFile).mockRejectedValue(new Error('Get file failed'));
-
-      await expect(uploadFileUseCase.getFile(fileId)).rejects.toThrow('Get file failed');
-    });
-
-    it('should handle null fileId', async () => {
-      await expect(uploadFileUseCase.getFile(null as any)).rejects.toThrow('File ID is required');
-    });
-
-    it('should handle empty fileId', async () => {
-      await expect(uploadFileUseCase.getFile('')).rejects.toThrow('File ID is required');
-    });
-  });
-
-  describe('validateFile', () => {
-    it('should validate file successfully', async () => {
-      const file = new File(['test'], 'test.mp3', { type: 'audio/mp3' });
-      
-      vi.mocked(mockFileRepository.validateFile).mockResolvedValue(true);
-
-      const result = await uploadFileUseCase.validateFile(file);
-
-      expect(mockFileRepository.validateFile).toHaveBeenCalledWith(file);
-      expect(result).toBe(true);
-    });
-
-    it('should handle validation failure', async () => {
-      const file = new File(['test'], 'test.mp3', { type: 'audio/mp3' });
-      
-      vi.mocked(mockFileRepository.validateFile).mockResolvedValue(false);
-
-      const result = await uploadFileUseCase.validateFile(file);
-
-      expect(result).toBe(false);
-    });
-
-    it('should handle validation errors', async () => {
-      const file = new File(['test'], 'test.mp3', { type: 'audio/mp3' });
-      
-      vi.mocked(mockFileRepository.validateFile).mockRejectedValue(new Error('Validation failed'));
-
-      await expect(uploadFileUseCase.validateFile(file)).rejects.toThrow('Validation failed');
-    });
-
-    it('should handle null file', async () => {
-      await expect(uploadFileUseCase.validateFile(null as any)).rejects.toThrow('File is required');
+      expect(result.audio).toEqual(['audio/mp3', 'audio/wav']);
+      expect(result.image).toEqual(['image/jpeg', 'image/png']);
     });
   });
 });

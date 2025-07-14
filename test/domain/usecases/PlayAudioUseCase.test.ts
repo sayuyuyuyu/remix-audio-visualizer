@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PlayAudioUseCase } from '../../../app/domain/usecases/PlayAudioUseCase';
-import { AudioRepository } from '../../../app/domain/repositories/AudioRepository';
 import { AudioFileEntity } from '../../../app/domain/entities/AudioFile';
+import type { AudioRepository } from '../../../app/domain/repositories/AudioRepository';
 
 describe('PlayAudioUseCase', () => {
   let playAudioUseCase: PlayAudioUseCase;
@@ -9,166 +9,99 @@ describe('PlayAudioUseCase', () => {
 
   beforeEach(() => {
     mockAudioRepository = {
-      playAudio: vi.fn(),
-      pauseAudio: vi.fn(),
-      stopAudio: vi.fn(),
-      getCurrentTime: vi.fn(),
-      setCurrentTime: vi.fn(),
-      getVolume: vi.fn(),
+      createAudioFile: vi.fn(),
+      getAudioFile: vi.fn(),
+      getAudioData: vi.fn(),
+      play: vi.fn(),
+      pause: vi.fn(),
+      stop: vi.fn(),
+      initializeAudioContext: vi.fn(),
+      disposeAudioContext: vi.fn(),
+      isPlaying: vi.fn().mockReturnValue(false),
       setVolume: vi.fn(),
+      setCurrentTime: vi.fn(),
       getDuration: vi.fn(),
+      getCurrentTime: vi.fn(),
     };
     playAudioUseCase = new PlayAudioUseCase(mockAudioRepository);
   });
 
-  describe('play', () => {
+  describe('execute', () => {
     it('should play audio file successfully', async () => {
       const audioFile = new AudioFileEntity(
-        new File(['test'], 'test.mp3', { type: 'audio/mp3' }),
-        'test.mp3',
-        1000,
-        'audio/mp3'
+        new File(['test'], 'test.mp3', { type: 'audio/mp3' })
       );
 
-      await playAudioUseCase.play(audioFile);
+      const result = await playAudioUseCase.execute({ audioFile });
 
-      expect(mockAudioRepository.playAudio).toHaveBeenCalledWith(audioFile);
+      expect(mockAudioRepository.initializeAudioContext).toHaveBeenCalled();
+      expect(mockAudioRepository.play).toHaveBeenCalledWith(audioFile);
+      expect(result.success).toBe(true);
+      expect(result.isPlaying).toBe(true);
     });
 
     it('should handle play errors', async () => {
       const audioFile = new AudioFileEntity(
-        new File(['test'], 'test.mp3', { type: 'audio/mp3' }),
-        'test.mp3',
-        1000,
-        'audio/mp3'
+        new File(['test'], 'test.mp3', { type: 'audio/mp3' })
+      );
+      
+      vi.mocked(mockAudioRepository.play).mockRejectedValue(new Error('Play failed'));
+
+      const result = await playAudioUseCase.execute({ audioFile });
+
+      expect(result.success).toBe(false);
+      expect(result.isPlaying).toBe(false);
+      expect(result.message).toContain('Play failed');
+    });
+
+    it('should reject invalid audio files', async () => {
+      const audioFile = new AudioFileEntity(
+        new File(['test'], 'test.txt', { type: 'text/plain' })
       );
 
-      vi.mocked(mockAudioRepository.playAudio).mockRejectedValue(new Error('Play failed'));
+      const result = await playAudioUseCase.execute({ audioFile });
 
-      await expect(playAudioUseCase.play(audioFile)).rejects.toThrow('Play failed');
+      expect(result.success).toBe(false);
+      expect(result.isPlaying).toBe(false);
+      expect(result.message).toContain('無効なオーディオファイル');
     });
   });
 
   describe('pause', () => {
     it('should pause audio successfully', async () => {
-      await playAudioUseCase.pause();
+      const result = await playAudioUseCase.pause();
 
-      expect(mockAudioRepository.pauseAudio).toHaveBeenCalled();
+      expect(mockAudioRepository.pause).toHaveBeenCalled();
+      expect(result.success).toBe(true);
+      expect(result.isPlaying).toBe(false);
     });
 
     it('should handle pause errors', async () => {
-      vi.mocked(mockAudioRepository.pauseAudio).mockRejectedValue(new Error('Pause failed'));
+      vi.mocked(mockAudioRepository.pause).mockRejectedValue(new Error('Pause failed'));
 
-      await expect(playAudioUseCase.pause()).rejects.toThrow('Pause failed');
+      const result = await playAudioUseCase.pause();
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('Pause failed');
     });
   });
 
   describe('stop', () => {
     it('should stop audio successfully', async () => {
-      await playAudioUseCase.stop();
+      const result = await playAudioUseCase.stop();
 
-      expect(mockAudioRepository.stopAudio).toHaveBeenCalled();
+      expect(mockAudioRepository.stop).toHaveBeenCalled();
+      expect(result.success).toBe(true);
+      expect(result.isPlaying).toBe(false);
     });
 
     it('should handle stop errors', async () => {
-      vi.mocked(mockAudioRepository.stopAudio).mockRejectedValue(new Error('Stop failed'));
+      vi.mocked(mockAudioRepository.stop).mockRejectedValue(new Error('Stop failed'));
 
-      await expect(playAudioUseCase.stop()).rejects.toThrow('Stop failed');
-    });
-  });
+      const result = await playAudioUseCase.stop();
 
-  describe('seek', () => {
-    it('should seek to specific time successfully', async () => {
-      const time = 30.5;
-
-      await playAudioUseCase.seek(time);
-
-      expect(mockAudioRepository.setCurrentTime).toHaveBeenCalledWith(time);
-    });
-
-    it('should handle seek errors', async () => {
-      vi.mocked(mockAudioRepository.setCurrentTime).mockRejectedValue(new Error('Seek failed'));
-
-      await expect(playAudioUseCase.seek(30)).rejects.toThrow('Seek failed');
-    });
-
-    it('should validate time parameter', async () => {
-      await expect(playAudioUseCase.seek(-1)).rejects.toThrow('Time must be non-negative');
-    });
-  });
-
-  describe('setVolume', () => {
-    it('should set volume successfully', async () => {
-      const volume = 0.5;
-
-      await playAudioUseCase.setVolume(volume);
-
-      expect(mockAudioRepository.setVolume).toHaveBeenCalledWith(volume);
-    });
-
-    it('should handle set volume errors', async () => {
-      vi.mocked(mockAudioRepository.setVolume).mockRejectedValue(new Error('Set volume failed'));
-
-      await expect(playAudioUseCase.setVolume(0.5)).rejects.toThrow('Set volume failed');
-    });
-
-    it('should validate volume parameter', async () => {
-      await expect(playAudioUseCase.setVolume(-0.1)).rejects.toThrow('Volume must be between 0 and 1');
-      await expect(playAudioUseCase.setVolume(1.1)).rejects.toThrow('Volume must be between 0 and 1');
-    });
-  });
-
-  describe('getCurrentTime', () => {
-    it('should get current time successfully', async () => {
-      const expectedTime = 25.5;
-      vi.mocked(mockAudioRepository.getCurrentTime).mockResolvedValue(expectedTime);
-
-      const result = await playAudioUseCase.getCurrentTime();
-
-      expect(result).toBe(expectedTime);
-      expect(mockAudioRepository.getCurrentTime).toHaveBeenCalled();
-    });
-
-    it('should handle get current time errors', async () => {
-      vi.mocked(mockAudioRepository.getCurrentTime).mockRejectedValue(new Error('Get time failed'));
-
-      await expect(playAudioUseCase.getCurrentTime()).rejects.toThrow('Get time failed');
-    });
-  });
-
-  describe('getDuration', () => {
-    it('should get duration successfully', async () => {
-      const expectedDuration = 180.5;
-      vi.mocked(mockAudioRepository.getDuration).mockResolvedValue(expectedDuration);
-
-      const result = await playAudioUseCase.getDuration();
-
-      expect(result).toBe(expectedDuration);
-      expect(mockAudioRepository.getDuration).toHaveBeenCalled();
-    });
-
-    it('should handle get duration errors', async () => {
-      vi.mocked(mockAudioRepository.getDuration).mockRejectedValue(new Error('Get duration failed'));
-
-      await expect(playAudioUseCase.getDuration()).rejects.toThrow('Get duration failed');
-    });
-  });
-
-  describe('getVolume', () => {
-    it('should get volume successfully', async () => {
-      const expectedVolume = 0.8;
-      vi.mocked(mockAudioRepository.getVolume).mockResolvedValue(expectedVolume);
-
-      const result = await playAudioUseCase.getVolume();
-
-      expect(result).toBe(expectedVolume);
-      expect(mockAudioRepository.getVolume).toHaveBeenCalled();
-    });
-
-    it('should handle get volume errors', async () => {
-      vi.mocked(mockAudioRepository.getVolume).mockRejectedValue(new Error('Get volume failed'));
-
-      await expect(playAudioUseCase.getVolume()).rejects.toThrow('Get volume failed');
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('Stop failed');
     });
   });
 });
