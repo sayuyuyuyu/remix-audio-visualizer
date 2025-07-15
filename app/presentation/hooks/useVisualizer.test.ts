@@ -130,7 +130,10 @@ describe('useVisualizer', () => {
 
     // Mock canvas element
     const mockCanvas = document.createElement('canvas');
-    result.current.canvasRef.current = mockCanvas;
+    Object.defineProperty(result.current.canvasRef, 'current', {
+      writable: true,
+      value: mockCanvas
+    });
 
     // Re-render to trigger useEffect
     renderHook(() => useVisualizer());
@@ -326,7 +329,10 @@ describe('useVisualizer', () => {
       const mockCanvas = document.createElement('canvas');
       mockCanvas.width = 800;
       mockCanvas.height = 600;
-      result.current.canvasRef.current = mockCanvas;
+      Object.defineProperty(result.current.canvasRef, 'current', {
+        writable: true,
+        value: mockCanvas
+      });
 
       act(() => {
         result.current.startAnimation();
@@ -360,7 +366,10 @@ describe('useVisualizer', () => {
 
       // Mock canvas
       const mockCanvas = document.createElement('canvas');
-      result.current.canvasRef.current = mockCanvas;
+      Object.defineProperty(result.current.canvasRef, 'current', {
+        writable: true,
+        value: mockCanvas
+      });
 
       act(() => {
         result.current.startAnimation();
@@ -380,7 +389,10 @@ describe('useVisualizer', () => {
 
       // Mock canvas
       const mockCanvas = document.createElement('canvas');
-      result.current.canvasRef.current = mockCanvas;
+      Object.defineProperty(result.current.canvasRef, 'current', {
+        writable: true,
+        value: mockCanvas
+      });
 
       act(() => {
         result.current.startAnimation();

@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { VisualizerCanvas } from './VisualizerCanvas';
 import { CenterImageEntity } from '../../domain/entities/CenterImage';
 

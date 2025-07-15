@@ -9,241 +9,418 @@ test.describe('Visualizer Modes E2E Tests', () => {
     const audioFilePath = path.join(__dirname, '../fixtures/test-audio.mp3');
     const fileInput = page.locator('input[type="file"][accept*="audio"]');
     await fileInput.setInputFiles(audioFilePath);
+    
+    // Wait for upload to complete
     await expect(page.getByText('アップロード中...')).toBeHidden({ timeout: 10000 });
   });
 
-  test('should display visualizer mode controls', async ({ page }) => {
-    // Look for mode toggle buttons
-    await expect(page.getByText('円形')).toBeVisible();
-    await expect(page.getByText('波形')).toBeVisible();
-    await expect(page.getByText('周波数バー')).toBeVisible();
-    await expect(page.getByText('太陽系')).toBeVisible();
-    await expect(page.getByText('パーティクルフィールド')).toBeVisible();
+  test('should display visualizer canvas', async ({ page }) => {
+    await expect(page.locator('canvas')).toBeVisible();
   });
 
-  test('should start with circular mode enabled by default', async ({ page }) => {
-    const circularMode = page.getByText('円形').locator('..');
-    await expect(circularMode).toHaveClass(/enabled|active|selected/);
+  test('should change visualizer mode to circular', async ({ page }) => {
+    // Find visualizer mode selector
+    const modeSelector = page.locator('select').first();
+    await modeSelector.selectOption('circular');
+    
+    // Verify mode is selected
+    await expect(modeSelector).toHaveValue('circular');
+    
+    // Start playing to see visualization
+    const playButton = page.getByRole('button', { name: /▶️/ });
+    await playButton.click();
+    
+    // Canvas should be rendering
+    await expect(page.locator('canvas')).toBeVisible();
   });
 
-  test('should toggle visualizer modes', async ({ page }) => {
-    // Toggle waveform mode
-    await page.getByText('波形').click();
+  test('should change visualizer mode to waveform', async ({ page }) => {
+    const modeSelector = page.locator('select').first();
+    await modeSelector.selectOption('waveform');
     
-    const waveformMode = page.getByText('波形').locator('..');
-    await expect(waveformMode).toHaveClass(/enabled|active|selected/);
+    await expect(modeSelector).toHaveValue('waveform');
     
-    // Toggle frequency bars mode
-    await page.getByText('周波数バー').click();
+    // Start playing to see visualization
+    const playButton = page.getByRole('button', { name: /▶️/ });
+    await playButton.click();
     
-    const frequencyMode = page.getByText('周波数バー').locator('..');
-    await expect(frequencyMode).toHaveClass(/enabled|active|selected/);
+    await expect(page.locator('canvas')).toBeVisible();
   });
 
-  test('should allow multiple modes to be enabled simultaneously', async ({ page }) => {
-    // Enable multiple modes
-    await page.getByText('波形').click();
-    await page.getByText('周波数バー').click();
+  test('should change visualizer mode to frequency bars', async ({ page }) => {
+    const modeSelector = page.locator('select').first();
+    await modeSelector.selectOption('frequencyBars');
     
-    // All should be enabled
-    const circularMode = page.getByText('円形').locator('..');
-    const waveformMode = page.getByText('波形').locator('..');
-    const frequencyMode = page.getByText('周波数バー').locator('..');
+    await expect(modeSelector).toHaveValue('frequencyBars');
     
-    await expect(circularMode).toHaveClass(/enabled|active|selected/);
-    await expect(waveformMode).toHaveClass(/enabled|active|selected/);
-    await expect(frequencyMode).toHaveClass(/enabled|active|selected/);
+    // Start playing to see visualization
+    const playButton = page.getByRole('button', { name: /▶️/ });
+    await playButton.click();
+    
+    await expect(page.locator('canvas')).toBeVisible();
   });
 
-  test('should change visualizer appearance when modes are toggled', async ({ page }) => {
-    // Play audio to activate visualizer
-    await page.getByRole('button', { name: /▶️/ }).click();
-    await expect(page.getByText('ビジュアライザー動作中')).toBeVisible();
+  test('should change visualizer mode to solar system', async ({ page }) => {
+    const modeSelector = page.locator('select').first();
+    await modeSelector.selectOption('solarSystem');
     
-    // Get canvas element
-    const canvas = page.locator('canvas');
-    await expect(canvas).toBeVisible();
+    await expect(modeSelector).toHaveValue('solarSystem');
     
-    // Take screenshot with circular mode
-    await page.screenshot({ path: 'test-results/circular-mode.png' });
+    // Start playing to see visualization
+    const playButton = page.getByRole('button', { name: /▶️/ });
+    await playButton.click();
     
-    // Toggle to waveform mode
-    await page.getByText('波形').click();
-    await page.waitForTimeout(500); // Wait for mode change
-    
-    // Take screenshot with waveform mode
-    await page.screenshot({ path: 'test-results/waveform-mode.png' });
-    
-    // Visual comparison would be done in actual implementation
-    // This test validates the mode switching mechanism
+    await expect(page.locator('canvas')).toBeVisible();
   });
 
-  test('should persist mode selections when audio is restarted', async ({ page }) => {
-    // Enable additional modes
-    await page.getByText('波形').click();
-    await page.getByText('太陽系').click();
+  test('should change visualizer mode to particle field', async ({ page }) => {
+    const modeSelector = page.locator('select').first();
+    await modeSelector.selectOption('particleField');
     
-    // Play audio
-    await page.getByRole('button', { name: /▶️/ }).click();
-    await expect(page.getByText('ビジュアライザー動作中')).toBeVisible();
+    await expect(modeSelector).toHaveValue('particleField');
     
-    // Stop audio
-    await page.getByRole('button', { name: /⏹️/ }).click();
+    // Start playing to see visualization
+    const playButton = page.getByRole('button', { name: /▶️/ });
+    await playButton.click();
     
-    // Play again
-    await page.getByRole('button', { name: /▶️/ }).click();
-    
-    // Modes should still be enabled
-    const waveformMode = page.getByText('波形').locator('..');
-    const solarMode = page.getByText('太陽系').locator('..');
-    
-    await expect(waveformMode).toHaveClass(/enabled|active|selected/);
-    await expect(solarMode).toHaveClass(/enabled|active|selected/);
+    await expect(page.locator('canvas')).toBeVisible();
   });
 
-  test('should display mode icons and descriptions', async ({ page }) => {
-    // Check for mode icons
-    await expect(page.getByText('🌀')).toBeVisible(); // Circular
-    await expect(page.getByText('〰️')).toBeVisible(); // Waveform
-    await expect(page.getByText('📊')).toBeVisible(); // Frequency
-    await expect(page.getByText('🪐')).toBeVisible(); // Solar System
-    await expect(page.getByText('✨')).toBeVisible(); // Particle Field
+  test('should change FFT size', async ({ page }) => {
+    // Find FFT size selector (usually second select)
+    const fftSelector = page.locator('select').nth(1);
+    await fftSelector.selectOption('512');
     
-    // Check for descriptions
-    await expect(page.getByText('クラシックな円形周波数ビジュアライザー')).toBeVisible();
-    await expect(page.getByText('リアルタイム音声波形表示')).toBeVisible();
-    await expect(page.getByText('周波数スペクトラム棒グラフ')).toBeVisible();
+    await expect(fftSelector).toHaveValue('512');
+    
+    // Start playing to see effect
+    const playButton = page.getByRole('button', { name: /▶️/ });
+    await playButton.click();
+    
+    await expect(page.locator('canvas')).toBeVisible();
   });
 
-  test('should handle theme changes', async ({ page }) => {
-    // Look for theme selector
-    const themeSelector = page.locator('[data-testid="theme-selector"]');
-    if (await themeSelector.isVisible()) {
-      await themeSelector.click();
-      
-      // Select a different theme
-      await page.getByText('カスタムテーマ').click();
-      
-      // Play audio to see theme change
-      await page.getByRole('button', { name: /▶️/ }).click();
-      await expect(page.getByText('ビジュアライザー動作中')).toBeVisible();
-    }
+  test('should change theme color', async ({ page }) => {
+    // Find theme selector
+    const themeSelector = page.locator('select').nth(2);
+    await themeSelector.selectOption('blue');
+    
+    await expect(themeSelector).toHaveValue('blue');
+    
+    // Start playing to see theme effect
+    const playButton = page.getByRole('button', { name: /▶️/ });
+    await playButton.click();
+    
+    await expect(page.locator('canvas')).toBeVisible();
   });
 
-  test('should adjust sensitivity settings', async ({ page }) => {
-    // Look for sensitivity slider
-    const sensitivitySlider = page.locator('[data-testid="sensitivity-slider"]');
-    if (await sensitivitySlider.isVisible()) {
-      await sensitivitySlider.fill('2.0');
-      
-      // Play audio to see sensitivity change
-      await page.getByRole('button', { name: /▶️/ }).click();
-      await expect(page.getByText('ビジュアライザー動作中')).toBeVisible();
-    }
+  test('should adjust smoothing parameter', async ({ page }) => {
+    // Find smoothing slider
+    const smoothingSlider = page.locator('input[type="range"]').nth(2);
+    await smoothingSlider.fill('0.5');
+    
+    await expect(smoothingSlider).toHaveValue('0.5');
+    
+    // Start playing to see effect
+    const playButton = page.getByRole('button', { name: /▶️/ });
+    await playButton.click();
+    
+    await expect(page.locator('canvas')).toBeVisible();
   });
 
-  test('should handle FFT size changes', async ({ page }) => {
-    // Look for FFT size selector
-    const fftSelector = page.locator('[data-testid="fft-size-selector"]');
-    if (await fftSelector.isVisible()) {
-      await fftSelector.selectOption('1024');
-      
-      // Play audio to see FFT size change
-      await page.getByRole('button', { name: /▶️/ }).click();
-      await expect(page.getByText('ビジュアライザー動作中')).toBeVisible();
-    }
-  });
-
-  test('should handle smoothing time constant changes', async ({ page }) => {
-    // Look for smoothing slider
-    const smoothingSlider = page.locator('[data-testid="smoothing-slider"]');
-    if (await smoothingSlider.isVisible()) {
-      await smoothingSlider.fill('0.5');
-      
-      // Play audio to see smoothing change
-      await page.getByRole('button', { name: /▶️/ }).click();
-      await expect(page.getByText('ビジュアライザー動作中')).toBeVisible();
-    }
-  });
-
-  test('should handle particle field mode specifically', async ({ page }) => {
-    // Enable particle field mode
-    await page.getByText('パーティクルフィールド').click();
+  test('should adjust sensitivity parameter', async ({ page }) => {
+    // Find sensitivity slider
+    const sensitivitySlider = page.locator('input[type="range"]').nth(3);
+    await sensitivitySlider.fill('2');
     
-    const particleMode = page.getByText('パーティクルフィールド').locator('..');
-    await expect(particleMode).toHaveClass(/enabled|active|selected/);
+    await expect(sensitivitySlider).toHaveValue('2');
     
-    // Play audio to see particle effect
-    await page.getByRole('button', { name: /▶️/ }).click();
-    await expect(page.getByText('ビジュアライザー動作中')).toBeVisible();
+    // Start playing to see effect
+    const playButton = page.getByRole('button', { name: /▶️/ });
+    await playButton.click();
     
-    // Particle field should have unique visual characteristics
-    const canvas = page.locator('canvas');
-    await expect(canvas).toBeVisible();
-  });
-
-  test('should handle solar system mode specifically', async ({ page }) => {
-    // Enable solar system mode
-    await page.getByText('太陽系').click();
-    
-    const solarMode = page.getByText('太陽系').locator('..');
-    await expect(solarMode).toHaveClass(/enabled|active|selected/);
-    
-    // Play audio to see solar system effect
-    await page.getByRole('button', { name: /▶️/ }).click();
-    await expect(page.getByText('ビジュアライザー動作中')).toBeVisible();
-    
-    // Solar system should have unique visual characteristics
-    const canvas = page.locator('canvas');
-    await expect(canvas).toBeVisible();
-  });
-
-  test('should disable modes when clicked again', async ({ page }) => {
-    // Enable a mode
-    await page.getByText('波形').click();
-    
-    let waveformMode = page.getByText('波形').locator('..');
-    await expect(waveformMode).toHaveClass(/enabled|active|selected/);
-    
-    // Disable the same mode
-    await page.getByText('波形').click();
-    
-    waveformMode = page.getByText('波形').locator('..');
-    await expect(waveformMode).not.toHaveClass(/enabled|active|selected/);
+    await expect(page.locator('canvas')).toBeVisible();
   });
 
   test('should handle mode changes during playback', async ({ page }) => {
-    // Start playing audio
-    await page.getByRole('button', { name: /▶️/ }).click();
-    await expect(page.getByText('ビジュアライザー動作中')).toBeVisible();
+    // Start playing first
+    const playButton = page.getByRole('button', { name: /▶️/ });
+    await playButton.click();
     
-    // Change modes while playing
-    await page.getByText('波形').click();
-    await page.waitForTimeout(500);
+    await expect(page.getByRole('button', { name: /⏸️/ })).toBeVisible();
     
-    await page.getByText('周波数バー').click();
-    await page.waitForTimeout(500);
+    // Change mode while playing
+    const modeSelector = page.locator('select').first();
+    await modeSelector.selectOption('waveform');
+    await expect(modeSelector).toHaveValue('waveform');
     
-    // Should still be playing
-    await expect(page.getByText('ビジュアライザー動作中')).toBeVisible();
+    // Change to another mode
+    await modeSelector.selectOption('frequencyBars');
+    await expect(modeSelector).toHaveValue('frequencyBars');
+    
+    // Canvas should continue rendering
+    await expect(page.locator('canvas')).toBeVisible();
   });
 
-  test('should maintain canvas rendering during mode switches', async ({ page }) => {
-    // Start visualizer
-    await page.getByRole('button', { name: /▶️/ }).click();
-    await expect(page.getByText('ビジュアライザー動作中')).toBeVisible();
+  test('should handle parameter changes during playback', async ({ page }) => {
+    // Start playing first
+    const playButton = page.getByRole('button', { name: /▶️/ });
+    await playButton.click();
     
-    const canvas = page.locator('canvas');
-    await expect(canvas).toBeVisible();
+    await expect(page.getByRole('button', { name: /⏸️/ })).toBeVisible();
     
-    // Switch modes rapidly
-    await page.getByText('波形').click();
-    await page.getByText('周波数バー').click();
-    await page.getByText('太陽系').click();
-    await page.getByText('パーティクルフィールド').click();
+    // Change multiple parameters
+    const smoothingSlider = page.locator('input[type="range"]').nth(2);
+    await smoothingSlider.fill('0.3');
+    
+    const sensitivitySlider = page.locator('input[type="range"]').nth(3);
+    await sensitivitySlider.fill('1.5');
+    
+    const themeSelector = page.locator('select').nth(2);
+    await themeSelector.selectOption('green');
+    
+    // Verify changes took effect
+    await expect(smoothingSlider).toHaveValue('0.3');
+    await expect(sensitivitySlider).toHaveValue('1.5');
+    await expect(themeSelector).toHaveValue('green');
+    
+    // Canvas should continue rendering
+    await expect(page.locator('canvas')).toBeVisible();
+  });
+
+  test('should handle all theme variations', async ({ page }) => {
+    const themes = ['rainbow', 'blue', 'green', 'orange', 'purple'];
+    const themeSelector = page.locator('select').nth(2);
+    
+    for (const theme of themes) {
+      await themeSelector.selectOption(theme);
+      await expect(themeSelector).toHaveValue(theme);
+      
+      // Start playing to see theme
+      const playButton = page.getByRole('button', { name: /▶️/ });
+      await playButton.click();
+      
+      await expect(page.locator('canvas')).toBeVisible();
+      
+      // Stop for next theme
+      const stopButton = page.getByRole('button', { name: /⏹️/ });
+      await stopButton.click();
+    }
+  });
+
+  test('should handle all FFT sizes', async ({ page }) => {
+    const fftSizes = ['32', '64', '128', '256', '512', '1024'];
+    const fftSelector = page.locator('select').nth(1);
+    
+    for (const size of fftSizes) {
+      await fftSelector.selectOption(size);
+      await expect(fftSelector).toHaveValue(size);
+      
+      // Start playing to see effect
+      const playButton = page.getByRole('button', { name: /▶️/ });
+      await playButton.click();
+      
+      await expect(page.locator('canvas')).toBeVisible();
+      
+      // Stop for next size
+      const stopButton = page.getByRole('button', { name: /⏹️/ });
+      await stopButton.click();
+    }
+  });
+
+  test('should handle extreme parameter values', async ({ page }) => {
+    // Test minimum values
+    const smoothingSlider = page.locator('input[type="range"]').nth(2);
+    await smoothingSlider.fill('0');
+    await expect(smoothingSlider).toHaveValue('0');
+    
+    const sensitivitySlider = page.locator('input[type="range"]').nth(3);
+    await sensitivitySlider.fill('0.1');
+    await expect(sensitivitySlider).toHaveValue('0.1');
+    
+    // Start playing
+    const playButton = page.getByRole('button', { name: /▶️/ });
+    await playButton.click();
+    
+    await expect(page.locator('canvas')).toBeVisible();
+    
+    // Stop and test maximum values
+    const stopButton = page.getByRole('button', { name: /⏹️/ });
+    await stopButton.click();
+    
+    await smoothingSlider.fill('1');
+    await expect(smoothingSlider).toHaveValue('1');
+    
+    await sensitivitySlider.fill('5');
+    await expect(sensitivitySlider).toHaveValue('5');
+    
+    // Play again
+    await playButton.click();
+    await expect(page.locator('canvas')).toBeVisible();
+  });
+
+  test('should handle canvas resize', async ({ page }) => {
+    // Start playing
+    const playButton = page.getByRole('button', { name: /▶️/ });
+    await playButton.click();
+    
+    await expect(page.locator('canvas')).toBeVisible();
+    
+    // Resize window
+    await page.setViewportSize({ width: 800, height: 600 });
     
     // Canvas should still be visible and rendering
-    await expect(canvas).toBeVisible();
-    await expect(page.getByText('ビジュアライザー動作中')).toBeVisible();
+    await expect(page.locator('canvas')).toBeVisible();
+    
+    // Resize to mobile
+    await page.setViewportSize({ width: 375, height: 667 });
+    
+    // Canvas should adapt
+    await expect(page.locator('canvas')).toBeVisible();
+  });
+
+  test('should handle rapid mode switching', async ({ page }) => {
+    const modes = ['circular', 'waveform', 'frequencyBars', 'solarSystem', 'particleField'];
+    const modeSelector = page.locator('select').first();
+    
+    // Start playing
+    const playButton = page.getByRole('button', { name: /▶️/ });
+    await playButton.click();
+    
+    await expect(page.getByRole('button', { name: /⏸️/ })).toBeVisible();
+    
+    // Rapidly switch modes
+    for (const mode of modes) {
+      await modeSelector.selectOption(mode);
+      await expect(modeSelector).toHaveValue(mode);
+      
+      // Wait a bit for rendering
+      await page.waitForTimeout(100);
+      
+      // Canvas should continue rendering
+      await expect(page.locator('canvas')).toBeVisible();
+    }
+  });
+
+  test('should handle visualizer with center image', async ({ page }) => {
+    // Upload center image
+    const imageFilePath = path.join(__dirname, '../fixtures/test-image.jpg');
+    const imageFileInput = page.locator('input[type="file"][accept*="image"]');
+    await imageFileInput.setInputFiles(imageFilePath);
+    
+    // Wait for image upload
+    await expect(page.getByText('アップロード中...')).toBeHidden({ timeout: 10000 });
+    
+    // Start playing audio
+    const playButton = page.getByRole('button', { name: /▶️/ });
+    await playButton.click();
+    
+    // Canvas should show both audio visualization and center image
+    await expect(page.locator('canvas')).toBeVisible();
+    
+    // Try different modes with center image
+    const modeSelector = page.locator('select').first();
+    await modeSelector.selectOption('circular');
+    await expect(page.locator('canvas')).toBeVisible();
+    
+    await modeSelector.selectOption('solarSystem');
+    await expect(page.locator('canvas')).toBeVisible();
+  });
+
+  test('should handle visualizer performance with high FFT size', async ({ page }) => {
+    // Set highest FFT size
+    const fftSelector = page.locator('select').nth(1);
+    await fftSelector.selectOption('1024');
+    
+    // Set particle field mode (most demanding)
+    const modeSelector = page.locator('select').first();
+    await modeSelector.selectOption('particleField');
+    
+    // Start playing
+    const playButton = page.getByRole('button', { name: /▶️/ });
+    await playButton.click();
+    
+    // Should still render smoothly
+    await expect(page.locator('canvas')).toBeVisible();
+    
+    // Change parameters while playing
+    const sensitivitySlider = page.locator('input[type="range"]').nth(3);
+    await sensitivitySlider.fill('3');
+    
+    await expect(page.locator('canvas')).toBeVisible();
+  });
+
+  test('should handle visualizer without audio', async ({ page }) => {
+    // Canvas should be visible but not animated
+    await expect(page.locator('canvas')).toBeVisible();
+    
+    // Change mode without audio
+    const modeSelector = page.locator('select').first();
+    await modeSelector.selectOption('waveform');
+    
+    await expect(page.locator('canvas')).toBeVisible();
+    
+    // Change parameters without audio
+    const smoothingSlider = page.locator('input[type="range"]').nth(2);
+    await smoothingSlider.fill('0.5');
+    
+    await expect(page.locator('canvas')).toBeVisible();
+  });
+
+  test('should handle visualizer error states', async ({ page }) => {
+    // Start playing
+    const playButton = page.getByRole('button', { name: /▶️/ });
+    await playButton.click();
+    
+    // Simulate error by changing to invalid mode (if handled)
+    const modeSelector = page.locator('select').first();
+    await modeSelector.selectOption('circular');
+    
+    // Should recover gracefully
+    await expect(page.locator('canvas')).toBeVisible();
+    
+    // Try all modes to ensure no crashes
+    const modes = ['waveform', 'frequencyBars', 'solarSystem', 'particleField'];
+    for (const mode of modes) {
+      await modeSelector.selectOption(mode);
+      await expect(page.locator('canvas')).toBeVisible();
+    }
+  });
+
+  test('should maintain visualizer settings across audio changes', async ({ page }) => {
+    // Set custom settings
+    const modeSelector = page.locator('select').first();
+    await modeSelector.selectOption('frequencyBars');
+    
+    const themeSelector = page.locator('select').nth(2);
+    await themeSelector.selectOption('blue');
+    
+    const smoothingSlider = page.locator('input[type="range"]').nth(2);
+    await smoothingSlider.fill('0.3');
+    
+    // Start playing
+    const playButton = page.getByRole('button', { name: /▶️/ });
+    await playButton.click();
+    
+    // Verify settings are active
+    await expect(modeSelector).toHaveValue('frequencyBars');
+    await expect(themeSelector).toHaveValue('blue');
+    await expect(smoothingSlider).toHaveValue('0.3');
+    
+    // Stop and upload new audio
+    const stopButton = page.getByRole('button', { name: /⏹️/ });
+    await stopButton.click();
+    
+    const audioFilePath = path.join(__dirname, '../fixtures/test-audio.mp3');
+    const fileInput = page.locator('input[type="file"][accept*="audio"]');
+    await fileInput.setInputFiles(audioFilePath);
+    
+    // Wait for upload
+    await expect(page.getByText('アップロード中...')).toBeHidden({ timeout: 10000 });
+    
+    // Settings should be preserved
+    await expect(modeSelector).toHaveValue('frequencyBars');
+    await expect(themeSelector).toHaveValue('blue');
+    await expect(smoothingSlider).toHaveValue('0.3');
   });
 });

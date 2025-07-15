@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useFileUpload, createFileSelector, useDragAndDrop } from './useFileUpload';
 import { AudioFileEntity } from '../../domain/entities/AudioFile';
 import { CenterImageEntity } from '../../domain/entities/CenterImage';
@@ -322,9 +322,11 @@ describe('useFileUpload', () => {
 });
 
 describe('createFileSelector', () => {
+  let validAudioFile: File;
   let mockInput: HTMLInputElement;
 
   beforeEach(() => {
+    validAudioFile = new File(['audio content'], 'test.mp3', { type: 'audio/mpeg' });
     mockInput = {
       type: '',
       accept: '',
@@ -371,7 +373,7 @@ describe('createFileSelector', () => {
 
     // Simulate cancellation
     if (mockInput.oncancel) {
-      mockInput.oncancel();
+      mockInput.oncancel(new Event('cancel'));
     }
 
     const result = await promise;
@@ -382,6 +384,13 @@ describe('createFileSelector', () => {
 });
 
 describe('useDragAndDrop', () => {
+  let validAudioFile: File;
+  let validImageFile: File;
+
+  beforeEach(() => {
+    validAudioFile = new File(['audio content'], 'test.mp3', { type: 'audio/mpeg' });
+    validImageFile = new File(['image content'], 'test.jpg', { type: 'image/jpeg' });
+  });
   it('should handle drag over event', () => {
     const mockOnDrop = vi.fn();
     const { result } = renderHook(() => useDragAndDrop(mockOnDrop));
