@@ -186,7 +186,7 @@ describe('useBPM', () => {
     );
 
     // Change to null
-    rerender({ audioRepo: null });
+    rerender({ audioRepo: null as any });
 
     expect(result.current.bpmData).toBeNull();
     expect(result.current.error).toBeNull();

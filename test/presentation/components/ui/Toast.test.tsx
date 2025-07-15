@@ -13,10 +13,7 @@ Object.defineProperty(global, 'crypto', {
 vi.useFakeTimers();
 
 describe('Toast', () => {
-  let mockOnClose: ReturnType<typeof vi.fn>;
-
   beforeEach(() => {
-    mockOnClose = vi.fn();
     vi.clearAllTimers();
   });
 
@@ -24,6 +21,8 @@ describe('Toast', () => {
     vi.runOnlyPendingTimers();
     vi.useRealTimers();
   });
+
+  const mockOnClose = vi.fn();
 
   const defaultProps: ToastProps = {
     id: 'test-id',

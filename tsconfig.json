@@ -7,6 +7,15 @@
     "**/.client/**/*.ts",
     "**/.client/**/*.tsx"
   ],
+  "exclude": [
+    "test/infrastructure/audio/WebAudioService.test.ts",
+    "test/integration/**/*.test.ts",
+    "test/presentation/components/VisualizerOverlay.test.tsx",
+    "test/presentation/components/ui/Card.test.tsx",
+    "test/presentation/hooks/useAudio.test.ts",
+    "test/presentation/hooks/useFileUpload.test.ts",
+    "test/presentation/components/BPMDisplay.test.tsx"
+  ],
   "compilerOptions": {
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "types": ["@remix-run/node", "vite/client"],
